@@ -1,0 +1,7 @@
+{
+  "name": "@carnet/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@carnet/framework": "*" }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "carnet",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "tsx watch apps/api/src/main.ts",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --coverage",
+    "build": "rolldown -c"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "rolldown": "^1.2.16",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
