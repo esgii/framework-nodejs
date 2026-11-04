@@ -1,1 +1,1 @@
-export const hello = (): string => "framework ok";
+export type * from "./types.ts";

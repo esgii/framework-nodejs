@@ -1,3 +1,4 @@
-import { hello } from "@carnet/framework";
+import type { HttpResponse } from "@carnet/framework";
 
-console.log(hello());
+const ok: HttpResponse = { status: 200, headers: {}, body: { status: "ok" } };
+console.log(ok);
