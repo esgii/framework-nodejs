@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "tsx watch apps/api/src/main.ts",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc -p packages/framework --noEmit && tsc -p apps/api --noEmit",
     "test": "vitest run --coverage",
     "build": "rolldown -c"
   },
