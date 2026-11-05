@@ -80,5 +80,11 @@ export interface RouteDefinition {
     version: string;
     name: string | null;
     middlewares: Middleware[];
-    controller: Controller;
+    /**
+     * Typed as Controller<never, never> so that any controller fits,
+     * including one with typed params or a validated body
+     * (Controller<{ id: string }, { title: string }>).
+     * The router builds the real context and casts it once when calling.
+     */
+    controller: Controller<never, never>;
 }
