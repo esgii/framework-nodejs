@@ -43,10 +43,24 @@ const route: RouteDefinition = {
     middlewares: [timing, auth],
     controller: showJourney,
 };
+// A controller with typed params and a validated body also fits in a route.
+const updateJourney: Controller<{ id: string }, { title: string }> = ({ params, body }) => {
+    return { status: 200, headers: {}, body: { id: params.id, title: body.title } };
+};
+
+const typedRoute: RouteDefinition = {
+    method: "PUT",
+    path: "/v1/journeys/{id}",
+    version: "v1",
+    name: "journeys.update",
+    middlewares: [auth],
+    controller: updateJourney,
+};
+
 // URLSearchParams fits QueryParams as is.
 const query: QueryParams = new URLSearchParams("email=a@b.c");
 
 // The single error format.
 const notFound: HttpError = { status: 404, code: "not_found", message: "Journey not found", details: [] };
 
-export { route, titleSchema };
+export { route, titleSchema, typedRoute };

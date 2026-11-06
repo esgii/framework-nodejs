@@ -11,3 +11,5 @@ coverage/
 uploads/
 storage/
 pgdata/
+
+.vscode/*
