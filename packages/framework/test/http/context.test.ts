@@ -1,8 +1,8 @@
 import { createServer, IncomingMessage, type IncomingHttpHeaders } from "node:http";
 import { Socket } from "node:net";
 import { describe, expect, it } from "vitest";
-import { buildContext } from "../src/http/context.js";
-import type { Controller } from "../src/types.js";
+import { buildContext } from "../../src/http/context.js";
+import type { Controller } from "../../src/types.js";
 
 function fakeRequest(url: string, headers: IncomingHttpHeaders = {}): IncomingMessage {
     const req = new IncomingMessage(new Socket());

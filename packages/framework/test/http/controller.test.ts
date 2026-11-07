@@ -1,9 +1,9 @@
 import { IncomingMessage } from "node:http";
 import { Socket } from "node:net";
 import { describe, expect, it } from "vitest";
-import { buildContext } from "../src/http/context.ts";
-import { isHttpResponse, runController } from "../src/http/controller.ts";
-import type { Controller, RouteDefinition } from "../src/types.ts";
+import { buildContext } from "../../src/http/context.ts";
+import { isHttpResponse, runController } from "../../src/http/controller.ts";
+import type { Controller, RouteDefinition } from "../../src/types.ts";
 
 const ctx = buildContext(new IncomingMessage(new Socket()));
 
