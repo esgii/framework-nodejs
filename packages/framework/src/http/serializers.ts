@@ -3,7 +3,7 @@ import type { HttpResponse } from "../types.ts";
 
 export type SerializerFn = (body: unknown) => string | Buffer;
 
-const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
+export const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
 function mediaType(value: string): string {
     const index = value.indexOf(";");
