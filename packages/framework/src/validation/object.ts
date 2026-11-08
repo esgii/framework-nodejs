@@ -1,4 +1,4 @@
-import type { Schema } from "../types.ts";
+import type { FieldError, Schema } from "../types.ts";
 import { createValidator, fail, ok, prefixErrors, type Infer, type Validator } from "./schema.ts";
 
 /** La description d'un objet : un schéma par clé. */
@@ -22,13 +22,19 @@ export function object<S extends Shape>(shape: S): Validator<ObjectOutput<S>> {
             return fail("", "type", "Expected an object");
         }
         const output: Record<string, unknown> = {};
+        // On continue après une erreur, pour que le client reçoive tous les problèmes en une seule réponse.
+        const errors: FieldError[] = [];
         for (const [key, schema] of Object.entries(shape)) {
             // Clés propres uniquement : une clé nommée "toString" ne doit pas lire la méthode héritée.
             const result = schema.parse(Object.hasOwn(input, key) ? input[key] : undefined);
-            if (!result.ok) {
-                return { ok: false, errors: prefixErrors(key, result.errors) };
+            if (result.ok) {
+                output[key] = result.value;
+            } else {
+                errors.push(...prefixErrors(key, result.errors));
             }
-            output[key] = result.value;
+        }
+        if (errors.length > 0) {
+            return { ok: false, errors };
         }
         // Le seul cast de la validation : la boucle ci-dessus a rempli chaque clé du shape
         // avec la valeur de son schéma, mais TypeScript ne sait pas suivre une boucle sur des clés.

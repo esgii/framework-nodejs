@@ -1,4 +1,4 @@
-import type { Schema } from "../types.ts";
+import type { FieldError, Schema } from "../types.ts";
 import { createValidator, fail, ok, prefixErrors, type Validator } from "./schema.ts";
 
 export interface ArrayOptions {
@@ -16,20 +16,23 @@ export function array<T>(item: Schema<T>, options: ArrayOptions = {}): Validator
         }
         // Array.isArray donne any[] : on le ramène à unknown[] pour que rien n'échappe aux vérifications.
         const items: readonly unknown[] = input;
+        // On continue après une erreur, pour que le client reçoive tous les problèmes en une seule réponse.
+        const errors: FieldError[] = [];
         if (options.min !== undefined && items.length < options.min) {
-            return fail("", "min", `Must contain at least ${options.min} items`);
+            errors.push({ field: "", code: "min", message: `Must contain at least ${options.min} items` });
         }
         if (options.max !== undefined && items.length > options.max) {
-            return fail("", "max", `Must contain at most ${options.max} items`);
+            errors.push({ field: "", code: "max", message: `Must contain at most ${options.max} items` });
         }
         const output: T[] = [];
         for (const [index, value] of items.entries()) {
             const result = item.parse(value);
-            if (!result.ok) {
-                return { ok: false, errors: prefixErrors(`[${index}]`, result.errors) };
+            if (result.ok) {
+                output.push(result.value);
+            } else {
+                errors.push(...prefixErrors(`[${index}]`, result.errors));
             }
-            output.push(result.value);
         }
-        return ok(output);
+        return errors.length > 0 ? { ok: false, errors } : ok(output);
     });
 }
