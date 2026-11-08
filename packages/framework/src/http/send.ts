@@ -3,11 +3,9 @@ import { once } from "node:events";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { HttpResponse } from "../types.ts";
+import { InternalError } from "./errors.ts";
 import { JSON_CONTENT_TYPE, serializers } from "./serializers.ts";
 
-const STREAM_FAILED = JSON.stringify({
-    error: { code: "internal_error", message: "Internal Server Error", details: [] },
-});
 
 /**
  * The only function that writes a response on the socket.
@@ -48,8 +46,9 @@ async function sendStream(
     } catch {
         source.off("error", ignore);
         source.destroy();
-        res.writeHead(500, { "content-type": JSON_CONTENT_TYPE });
-        res.end(STREAM_FAILED);
+        const failed = new InternalError().toResponse();
+        res.writeHead(failed.status, failed.headers);
+        res.end(JSON.stringify(failed.body));
         return;
     }
 

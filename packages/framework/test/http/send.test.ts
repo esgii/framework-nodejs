@@ -152,8 +152,7 @@ describe("send with a stream", () => {
 
         expect(response.status).toBe(500);
         expect(await response.json()).toEqual({
-            error: { code: "internal_error", message: "Internal Server Error", details: [] },
-        });
+            error: { code: "INTERNAL_ERROR", message: "Internal server error", details: [] },        });
     });
 
     it("cuts the connection when the source fails in the middle", async () => {
