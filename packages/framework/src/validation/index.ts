@@ -1,3 +1,4 @@
+import { number } from "./number.ts";
 import { email, string } from "./string.ts";
 
 /**
@@ -6,4 +7,5 @@ import { email, string } from "./string.ts";
 export const v = {
     string,
     email,
+    number,
 };
