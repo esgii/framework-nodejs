@@ -1,4 +1,6 @@
+import { array } from "./array.ts";
 import { number } from "./number.ts";
+import { object } from "./object.ts";
 import { boolean, enumOf } from "./primitives.ts";
 import { email, string } from "./string.ts";
 
@@ -13,4 +15,6 @@ export const v = {
     number,
     boolean,
     enum: enumOf,
+    array,
+    object,
 };

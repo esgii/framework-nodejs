@@ -1,4 +1,4 @@
-import type { ParseResult, Schema } from "../types.ts";
+import type { FieldError, ParseResult, Schema } from "../types.ts";
 
 /**
  * Un schéma avec les modificateurs communs. Chaque validateur (string, number, object...)
@@ -46,4 +46,23 @@ function build<T>(parse: (input: unknown) => ParseResult<T>): Validator<T> {
  */
 export function createValidator<T>(check: (input: unknown) => ParseResult<T>): Validator<T> {
     return build((input) => (input === undefined ? fail("", "required", "This field is required") : check(input)));
+}
+
+/**
+ * Ajoute un segment (une clé ou "[index]") devant le champ de chaque erreur.
+ * Les enfants renvoient des erreurs relatives à eux-mêmes ; le parent ajoute leur position.
+ */
+export function prefixErrors(segment: string, errors: FieldError[]): FieldError[] {
+    return errors.map((error) => ({ ...error, field: joinPath(segment, error.field) }));
+}
+
+/** joinPath("steps", "[2].title") → "steps[2].title", joinPath("[2]", "title") → "[2].title". */
+function joinPath(parent: string, child: string): string {
+    if (child === "") {
+        return parent;
+    }
+    if (child.startsWith("[")) {
+        return `${parent}${child}`;
+    }
+    return `${parent}.${child}`;
 }
