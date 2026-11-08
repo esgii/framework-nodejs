@@ -16,3 +16,16 @@ export {
   stream,
   text,
 } from "./http/response.ts";
+
+export type {
+  AppEnv,
+  ApiConfig,
+  AuthConfig,
+  CorsConfig,
+  DatabaseConfig,
+  FrameworkConfig,
+  RateLimitConfig,
+  ServerConfig,
+  UploadsConfig,
+} from "./core/config.js";
+
