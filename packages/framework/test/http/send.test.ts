@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { send } from "../../src/http/send.ts";
 
-/** Starts a server whose handler receives the raw `res`. */
+/** Démarre un serveur dont le gestionnaire reçoit le `res` brut. */
 async function startServer(handler: (res: ServerResponse) => Promise<void>) {
     const server = createServer((_req, res) => {
         void handler(res);
@@ -17,7 +17,7 @@ async function startServer(handler: (res: ServerResponse) => Promise<void>) {
     return { url: `http://127.0.0.1:${address.port}/`, close: () => server.close() };
 }
 
-/** Makes one request with fetch, then closes the server. */
+/** Fait une requête avec fetch, puis ferme le serveur. */
 async function request(handler: (res: ServerResponse) => Promise<void>): Promise<Response> {
     const server = await startServer(handler);
     try {
@@ -27,7 +27,7 @@ async function request(handler: (res: ServerResponse) => Promise<void>): Promise
     }
 }
 
-/** A stream that makes chunks only when asked: it never holds the whole body in memory. */
+/** Un flux qui fabrique ses morceaux à la demande : il n'a jamais tout le body en mémoire. */
 function lazySource(totalBytes: number, chunkBytes = 64 * 1024) {
     const state = { produced: 0 };
     const stream = new Readable({
@@ -125,7 +125,7 @@ describe("send with a stream", () => {
         const response = await new Promise<IncomingMessage>((resolve) => get(server.url, resolve));
         response.pause();
         await new Promise((resolve) => setTimeout(resolve, 300));
-        // The client reads nothing: the server stopped reading the source long before the end.
+        // Le client ne lit rien : le serveur a arrêté de lire la source bien avant la fin.
         const producedWhilePaused = state.produced;
 
         let received = 0;
@@ -152,7 +152,8 @@ describe("send with a stream", () => {
 
         expect(response.status).toBe(500);
         expect(await response.json()).toEqual({
-            error: { code: "INTERNAL_ERROR", message: "Internal server error", details: [] },        });
+            error: { code: "INTERNAL_ERROR", message: "Internal server error", details: [] },
+        });
     });
 
     it("cuts the connection when the source fails in the middle", async () => {
@@ -165,7 +166,7 @@ describe("send with a stream", () => {
                     if (step === 1) {
                         this.push("first part ");
                     } else {
-                        // The disk fails a little later, once the first part has reached the client.
+                        // Le disque tombe en panne un peu plus tard, une fois la première partie arrivée au client.
                         setTimeout(() => this.destroy(new Error("disk error")), 50);
                     }
                 },
@@ -183,7 +184,7 @@ describe("send with a stream", () => {
 
         expect(response.status).toBe(200);
         expect(failed).toBe(true);
-        expect(await sending).toBe(true); // send itself never throws
+        expect(await sending).toBe(true); // send lui-même ne lève jamais d'erreur
 
     });
 
@@ -194,7 +195,7 @@ describe("send with a stream", () => {
         });
 
         const req = get(server.url, (response) => {
-            response.once("data", () => req.destroy()); // the client closes after the first chunk
+            response.once("data", () => req.destroy()); // le client ferme après le premier morceau
         });
         req.on("error", () => {});
         await new Promise((resolve) => stream.on("close", resolve));

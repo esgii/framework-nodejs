@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { toErrorResponse } from "../../src/http/error-handler.ts";
 import { NotFoundError, TooManyRequestsError } from "../../src/http/errors.ts";
 
-/** A logger that keeps what it receives, to check it in the test. */
+/** Un logger qui garde ce qu'il reçoit, pour le vérifier dans le test. */
 function fakeLogger() {
     const entries: Record<string, unknown>[] = [];
     return { entries, log: (entry: Record<string, unknown>) => entries.push(entry) };
 }
 
-/** What node-postgres throws on a duplicate email: an Error with extra fields. */
+/** Ce que lève node-postgres pour un email en double : une Error avec des champs en plus. */
 function pgError() {
     return Object.assign(new Error('duplicate key value violates unique constraint "users_email_key"'), {
         code: "23505",
@@ -42,7 +42,7 @@ describe("toErrorResponse", () => {
         });
         expect(sent.includes("duplicate")).toBe(false);
         expect(sent.includes("alice@mail.com")).toBe(false);
-        expect(sent.includes("at ")).toBe(false); // no stack trace
+        expect(sent.includes("at ")).toBe(false); // pas de trace
     });
 
     it("shows what went wrong in development", () => {
@@ -52,7 +52,7 @@ describe("toErrorResponse", () => {
         expect(response.status).toBe(500);
         expect(JSON.stringify(response.body).includes("x is undefined")).toBe(true);
         expect(JSON.stringify(response.body).includes("TypeError")).toBe(true);
-        expect(JSON.stringify(response.body).includes("error-handler.test")).toBe(true); // the stack points here
+        expect(JSON.stringify(response.body).includes("error-handler.test")).toBe(true); // la trace pointe ici
     });
 
     it("handles something thrown that is not an Error", () => {
