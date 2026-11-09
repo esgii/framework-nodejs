@@ -1,26 +1,26 @@
 /**
- * Public contract of the framework (SET-08).
+ * Contrat public du framework (SET-08).
  */
 import type { IncomingMessage } from "node:http";
 
-/** Query string params (?email=a&name=b): the URL object seen in class. */
+/** Paramètres de la query (?email=a&name=b) : l'objet URL vu en cours. */
 export type QueryParams = URLSearchParams;
 
-/** What the controller returns. body is sent as JSON unless it is a string or a Buffer. */
+/** Ce que renvoie le contrôleur. Le body part en JSON, sauf si c'est une chaîne, un Buffer ou un flux. */
 export interface HttpResponse {
     status: number;
     headers: Record<string, string>;
     body: unknown;
 }
 
-/** One error on one field, used for 422 responses. */
+/** Une erreur sur un champ, utilisée pour les réponses 422. */
 export interface FieldError {
     field: string;
     message: string;
     code: string;
 }
 
-/** Thrown anywhere, turned into the single error format by the error handler. */
+/** Lancée n'importe où, transformée au format d'erreur unique par le gestionnaire d'erreurs. */
 export interface HttpError {
     status: number;
     code: string;
@@ -28,20 +28,20 @@ export interface HttpError {
     details: FieldError[];
 }
 
-/** Data read from the token. */
+/** Les données lues dans le jeton. */
 export interface AuthUser {
     id: string;
     role: string;
 }
 
-/** The route found by the router. */
+/** La route trouvée par le routeur. */
 export interface ResolvedRoute {
     name: string | null;
     path: string;
     version: string;
 }
 
-/** Everything a controller or a middleware can use. */
+/** Tout ce qu'un contrôleur ou un middleware peut utiliser. */
 export interface Context<P = Record<string, string>, B = unknown> {
     readonly req: IncomingMessage;
     readonly params: P;
@@ -49,14 +49,14 @@ export interface Context<P = Record<string, string>, B = unknown> {
     readonly body: B;
     readonly ip: string;
     readonly version: string;
-    /** Set by the auth middleware, null when not logged in. */
+    /** Rempli par le middleware d'authentification, null si personne n'est connecté. */
     user: AuthUser | null;
     readonly route: ResolvedRoute | null;
-    /** Free storage shared between middlewares. */
+    /** Un espace libre partagé entre les middlewares. */
     readonly state: Map<string, unknown>;
 }
 
-/** Runs the rest of the chain and gives back its response. */
+/** Exécute la suite de la chaîne et rend sa réponse. */
 export type Next = () => Promise<HttpResponse>;
 
 export type Middleware = (ctx: Context, next: Next) => Promise<HttpResponse>;
@@ -65,7 +65,7 @@ export type Controller<P = Record<string, string>, B = unknown> = (
     ctx: Context<P, B>,
 ) => HttpResponse | Promise<HttpResponse>;
 
-/** Result of a validation: the clean value, or the list of errors. */
+/** Le résultat d'une validation : la valeur propre, ou la liste des erreurs. */
 export type ParseResult<T> =
     | { ok: true; value: T }
     | { ok: false; errors: FieldError[] };
@@ -74,7 +74,7 @@ export interface Schema<T> {
     parse(input: unknown): ParseResult<T>;
 }
 
-/** A route as stored by the registry. */
+/** Une route, telle que le registre la garde en mémoire. */
 export interface RouteDefinition {
     method: string;
     path: string;
@@ -82,10 +82,10 @@ export interface RouteDefinition {
     name: string | null;
     middlewares: Middleware[];
     /**
-     * Typed as Controller<never, never> so that any controller fits,
-     * including one with typed params or a validated body
+     * Typé Controller<never, never> pour que n'importe quel contrôleur y rentre,
+     * y compris un contrôleur avec des params typés ou un body validé
      * (Controller<{ id: string }, { title: string }>).
-     * The router builds the real context and casts it once when calling.
+     * Le routeur construit le vrai contexte et force le type une seule fois à l'appel.
      */
     controller: Controller<never, never>;
 }

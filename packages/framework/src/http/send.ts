@@ -3,16 +3,13 @@ import { once } from "node:events";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { HttpResponse } from "../types.ts";
+import { InternalError } from "./errors.ts";
 import { JSON_CONTENT_TYPE, serializers } from "./serializers.ts";
 
-const STREAM_FAILED = JSON.stringify({
-    error: { code: "internal_error", message: "Internal Server Error", details: [] },
-});
-
 /**
- * The only function that writes a response on the socket.
- * Returns true if it sent the response, false if one was already sent
- * (a second send is ignored, so Node never throws ERR_HTTP_HEADERS_SENT).
+ * La seule fonction qui écrit une réponse sur la connexion.
+ * Renvoie true si elle a envoyé la réponse, false si une réponse était déjà partie
+ * (un second envoi est ignoré, donc Node ne lève jamais ERR_HTTP_HEADERS_SENT).
  */
 export async function send(res: ServerResponse, response: HttpResponse): Promise<boolean> {
     if (res.headersSent || res.writableEnded) {
@@ -21,6 +18,7 @@ export async function send(res: ServerResponse, response: HttpResponse): Promise
 
     const payload = serializers.serialize(response);
     const headers = { ...response.headers };
+    // Le body a été écrit en JSON par défaut : on le dit au client.
     if (headers["content-type"] === undefined && typeof payload === "string" && payload !== "") {
         headers["content-type"] = JSON_CONTENT_TYPE;
     }
@@ -34,30 +32,38 @@ export async function send(res: ServerResponse, response: HttpResponse): Promise
     return true;
 }
 
-/** Sends a stream chunk by chunk, and handles the source failing or the client leaving. */
+/** Envoie un flux morceau par morceau, et gère la panne de la source ou le départ du client. */
 async function sendStream(
     res: ServerResponse,
     status: number,
     headers: Record<string, string>,
     source: Readable,
 ): Promise<void> {
+    // Une erreur que personne n'écoute fait planter tout le serveur : on garde un écouteur jusqu'au bout.
+    // pipeline voit quand même l'erreur et la traite.
     const ignore = () => {};
     source.on("error", ignore);
     try {
+        // On attend la première donnée : un fichier impossible à ouvrir échoue ici,
+        // avant l'envoi des en-têtes, donc le client peut encore recevoir un 500 propre.
         await once(source, "readable");
     } catch {
         source.off("error", ignore);
         source.destroy();
-        res.writeHead(500, { "content-type": JSON_CONTENT_TYPE });
-        res.end(STREAM_FAILED);
+        const failed = new InternalError().toResponse();
+        res.writeHead(failed.status, failed.headers);
+        res.end(JSON.stringify(failed.body));
         return;
     }
 
     res.writeHead(status, headers);
     try {
+        // pipeline envoie les morceaux au rythme du client. Si le client part,
+        // il détruit la source ; si la source tombe en panne, il coupe la connexion.
         await pipeline(source, res);
     } catch {
-
+        // Les en-têtes sont déjà partis : on ne peut plus changer le statut.
+        // La connexion a été coupée, ce qui indique au client que le fichier est incomplet.
     } finally {
         source.off("error", ignore);
     }

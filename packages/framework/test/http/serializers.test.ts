@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import { createSerializerRegistry } from "../../src/http/serializers.ts";
 import type { HttpResponse } from "../../src/types.ts";
 
-/** A response with a given content type, as a controller would return it. */
+/** Une réponse avec un type de contenu donné, comme un contrôleur la renverrait. */
 function response(body: unknown, contentType?: string): HttpResponse {
     return { status: 200, headers: contentType === undefined ? {} : { "content-type": contentType }, body };
 }
 
+/** Un sérialiseur XML minimal, écrit seulement pour le test. */
 function toXml(body: unknown): string {
     if (typeof body !== "object" || body === null) {
         return "<root/>";

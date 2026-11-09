@@ -2,10 +2,10 @@ import type { IncomingMessage } from "node:http";
 import type { Context, ResolvedRoute } from "../types.ts";
 
 /**
- * Returns the client IP.
- * Behind a trusted proxy (Traefik), it comes from the X-Forwarded-For header,
- * like "203.0.113.7, 10.0.0.1": the client is the first part.
- * Otherwise, it comes from the connection itself.
+ * Renvoie l'IP du client.
+ * Derrière un proxy de confiance (Traefik), elle vient de l'en-tête X-Forwarded-For,
+ * par exemple "203.0.113.7, 10.0.0.1" : le client est la première partie.
+ * Sinon, elle vient de la connexion elle-même.
  */
 function getClientIp(req: IncomingMessage, trustProxy: boolean): string {
     if (trustProxy) {
@@ -20,8 +20,8 @@ function getClientIp(req: IncomingMessage, trustProxy: boolean): string {
 }
 
 /**
- * Builds the context from the client request: each piece of information
- * goes in its own field, so controllers and middlewares can use only what they need.
+ * Construit le contexte à partir de la requête du client : chaque information
+ * va dans sa propre case, pour que les contrôleurs et les middlewares ne prennent que ce dont ils ont besoin.
  */
 export function buildContext(
     req: IncomingMessage,
@@ -44,4 +44,3 @@ export function buildContext(
         state: new Map(),
     };
 }
-

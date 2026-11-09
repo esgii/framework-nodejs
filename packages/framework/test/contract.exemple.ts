@@ -1,9 +1,9 @@
 /**
- * Contract check (SET-08): never executed, it only has to compile.
+ * Vérification du contrat (SET-08) : jamais exécuté, ce fichier doit seulement compiler.
  */
-import type {Controller, HttpError, Middleware, QueryParams, RouteDefinition, Schema} from "@carnet/framework";
+import type { Controller, Middleware, RouteDefinition, Schema } from "@carnet/framework";
 
-// A schema written by hand, until the real validator exists.
+// Un schéma écrit à la main, en attendant le vrai validateur.
 const titleSchema: Schema<{ title: string }> = {
     parse(input) {
         if (typeof input === "object" && input !== null && "title" in input && typeof input.title === "string") {
@@ -13,12 +13,12 @@ const titleSchema: Schema<{ title: string }> = {
     },
 };
 
-// A controller: receives the context, returns a response.
+// Un contrôleur : il reçoit le contexte et renvoie une réponse.
 const showJourney: Controller = async ({ params }) => {
     return { status: 200, headers: {}, body: { id: params["id"] } };
 };
 
-// A middleware that stops the chain if there is no token.
+// Un middleware qui arrête la chaîne s'il n'y a pas de jeton.
 const auth: Middleware = async (ctx, next) => {
     if (ctx.req.headers.authorization === undefined) {
         return { status: 401, headers: {}, body: { error: "unauthenticated" } };
@@ -27,7 +27,7 @@ const auth: Middleware = async (ctx, next) => {
     return next();
 };
 
-// A middleware that acts after the controller (onion).
+// Un middleware qui agit après le contrôleur (l'oignon).
 const timing: Middleware = async (_ctx, next) => {
     const start = Date.now();
     const res = await next();
@@ -43,7 +43,8 @@ const route: RouteDefinition = {
     middlewares: [timing, auth],
     controller: showJourney,
 };
-// A controller with typed params and a validated body also fits in a route.
+
+// Un contrôleur avec des params typés et un body validé rentre aussi dans une route.
 const updateJourney: Controller<{ id: string }, { title: string }> = ({ params, body }) => {
     return { status: 200, headers: {}, body: { id: params.id, title: body.title } };
 };
@@ -56,11 +57,5 @@ const typedRoute: RouteDefinition = {
     middlewares: [auth],
     controller: updateJourney,
 };
-
-// URLSearchParams fits QueryParams as is.
-const query: QueryParams = new URLSearchParams("email=a@b.c");
-
-// The single error format.
-const notFound: HttpError = { status: 404, code: "not_found", message: "Journey not found", details: [] };
 
 export { route, titleSchema, typedRoute };
