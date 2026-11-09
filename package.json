@@ -7,16 +7,17 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "tsx watch apps/api/src/main.ts",
+    "dev": "tsx watch --clear-screen=false --env-file=.env apps/api/src/main.ts",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --coverage",
     "build": "rolldown -c"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
     "rolldown": "^1.2.16",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

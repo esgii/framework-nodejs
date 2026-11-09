@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+*.tsbuildinfo
 *.log
 
 # secrets
@@ -13,3 +14,4 @@ storage/
 pgdata/
 
 .vscode/*
+.DS_Store
