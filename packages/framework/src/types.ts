@@ -17,6 +17,7 @@ export interface HttpResponse {
 export interface FieldError {
     field: string;
     message: string;
+    code: string;
 }
 
 /** Thrown anywhere, turned into the single error format by the error handler. */

@@ -9,7 +9,7 @@ const titleSchema: Schema<{ title: string }> = {
         if (typeof input === "object" && input !== null && "title" in input && typeof input.title === "string") {
             return { ok: true, value: { title: input.title } };
         }
-        return { ok: false, errors: [{ field: "title", message: "Title is required" }] };
+        return { ok: false, errors: [{ field: "title", message: "Title is required", code: "required" }] };
     },
 };
 
