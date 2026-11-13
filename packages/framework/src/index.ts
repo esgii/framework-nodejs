@@ -33,5 +33,8 @@ export { ConfigError, validateConfig } from "./core/validate-config.js";
 export type { ConfigIssue } from "./core/validate-config.js";
 
 
+
 export { defineTable, IdentifierError, sortColumn, UnknownSortKeyError } from "./db/identifiers.ts";
 export type { SortMap, Table } from "./db/identifiers.ts";
+export { from, QueryError, SelectQuery } from "./db/select.ts";
+export type { Column, Operator, SqlQuery, SqlValue } from "./db/select.ts";
