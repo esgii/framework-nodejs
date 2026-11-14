@@ -13,6 +13,7 @@ import {
     type SqlValue,
 } from "./conditions.ts";
 import type { Database } from "./connection.ts";
+import { decodeRow, type Decoder } from "./decode.ts";
 import { quoteIdent, sortColumn, type SortMap } from "./identifiers.ts";
 
 // Réexportés ici pour que les imports existants (index.ts, tests) restent valables.
@@ -149,6 +150,23 @@ export class SelectQuery {
     toSQL(): SqlQuery {
         const columns = this.#state.columns.length > 0 ? this.#state.columns.join(", ") : "*";
         return this.#sql(columns, true);
+    }
+
+    /**
+     * Exécute la requête et décode chaque ligne : avec un schéma du validateur,
+     * `const rows: JourneyRow[] = await q.all(db, journeyRow)` est typé sans `as`.
+     */
+    async all<T>(db: Database, decode: Decoder<T>): Promise<T[]> {
+        const { text, values } = this.toSQL();
+        const { rows } = await db.query(text, [...values]);
+        // Chaque ligne arrive comme unknown dans le décodeur.
+        return rows.map((row: unknown, index) => decodeRow(decode, row, index));
+    }
+
+    /** Exécute la requête limitée à une ligne ; null s'il n'y en a aucune. */
+    async first<T>(db: Database, decode: Decoder<T>): Promise<T | null> {
+        const [row] = await this.limit(1).all(db, decode);
+        return row ?? null;
     }
 
     /**

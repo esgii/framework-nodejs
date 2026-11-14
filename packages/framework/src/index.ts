@@ -41,3 +41,5 @@ export { from, QueryError, SelectQuery } from "./db/select.ts";
 export type { Column, Direction, Operator, Page, SqlParam, SqlQuery, SqlValue } from "./db/select.ts";
 export { deleteFrom, DeleteQuery, insert, InsertQuery, update, UpdateQuery } from "./db/write.ts";
 export type { Row } from "./db/write.ts";
+export { RowDecodeError } from "./db/decode.ts";
+export type { Decoder } from "./db/decode.ts";
