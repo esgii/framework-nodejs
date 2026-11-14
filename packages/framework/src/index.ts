@@ -33,8 +33,9 @@ export { ConfigError, validateConfig } from "./core/validate-config.js";
 export type { ConfigIssue } from "./core/validate-config.js";
 
 
-
+// La connexion (createDatabase) reste interne : elle accepte du SQL brut,
+// l'app ne doit jamais pouvoir s'en servir directement.
 export { defineTable, IdentifierError, sortColumn, UnknownSortKeyError } from "./db/identifiers.ts";
 export type { SortMap, Table } from "./db/identifiers.ts";
 export { from, QueryError, SelectQuery } from "./db/select.ts";
-export type { Column, Operator, SqlQuery, SqlValue } from "./db/select.ts";
+export type { Column, Direction, Operator, Page, SqlQuery, SqlValue } from "./db/select.ts";

@@ -1,4 +1,5 @@
-import { quoteIdent } from "./identifiers.ts";
+import type { Database } from "./connection.ts";
+import { quoteIdent, sortColumn, type SortMap } from "./identifiers.ts";
 
 /** Une requête mal construite dans le code (opérateur inconnu…) : un bug, donc un 500. */
 export class QueryError extends Error {
@@ -12,6 +13,19 @@ export type SqlValue = string | number | bigint | boolean | Date;
 export type Operator = "=" | "<>" | "<" | "<=" | ">" | ">=" | "like" | "ilike";
 
 const OPERATORS: ReadonlySet<string> = new Set(["=", "<>", "<", "<=", ">", ">=", "like", "ilike"]);
+
+/** Le sens d'un tri (liste blanche). */
+export type Direction = "asc" | "desc";
+
+const DIRECTIONS: ReadonlySet<string> = new Set(["asc", "desc"]);
+
+/** Une page de résultats, et le nombre total de lignes de la requête sans pagination. */
+export interface Page {
+    readonly items: Record<string, unknown>[];
+    readonly total: number;
+    readonly size: number;
+    readonly offset: number;
+}
 
 /** Une colonne choisie : "j.title", ou ["j.title", "name"] pour la renommer. */
 export type Column = string | readonly [column: string, alias: string];
@@ -38,6 +52,10 @@ interface State {
     /** Les jointures, déjà écrites en SQL : elles ne contiennent que des noms, jamais de valeurs. */
     readonly joins: readonly string[];
     readonly conditions: readonly Condition[];
+    /** Les tris, déjà écrits en SQL : "j"."created_at" DESC. */
+    readonly orders: readonly string[];
+    readonly limit: number | undefined;
+    readonly offset: number | undefined;
 }
 
 /**
@@ -116,14 +134,70 @@ export class SelectQuery {
         return this.#add(this.#group("OR", build));
     }
 
+    /** Trie par une colonne écrite dans le code. Plusieurs appels s'ajoutent : le premier tri compte d'abord. */
+    orderBy(column: string, direction: Direction = "asc"): SelectQuery {
+        return this.#order(quoteIdent(column), direction);
+    }
+
+    /** Trie selon une clé envoyée par le client, traduite par la table de correspondance. */
+    sortBy(key: string, map: SortMap, direction: Direction = "asc"): SelectQuery {
+        return this.#order(sortColumn(key, map), direction);
+    }
+
+    /** Le nombre maximum de lignes, passé en paramètre lié. */
+    limit(count: number): SelectQuery {
+        return this.#with({ limit: integer(count, "limit", 0) });
+    }
+
+    /** Le nombre de lignes à sauter, passé en paramètre lié. */
+    offset(count: number): SelectQuery {
+        return this.#with({ offset: integer(count, "offset", 0) });
+    }
+
     /** Le texte SQL et ses valeurs, numérotées $1, $2… dans l'ordre où elles apparaissent. */
     toSQL(): SqlQuery {
-        const values: SqlValue[] = [];
         const columns = this.#state.columns.length > 0 ? this.#state.columns.join(", ") : "*";
-        const joins = this.#state.joins.map((join) => ` ${join}`).join("");
-        const where = render(this.#state.conditions, values);
-        const text = `SELECT ${columns} FROM ${this.#state.table}${joins}${where === "" ? "" : ` WHERE ${where}`}`;
+        return this.#sql(columns, true);
+    }
+
+    /**
+     * Exécute la requête pour une page, et compte le total des lignes sans pagination.
+     * Deux requêtes : la page (avec tri, LIMIT et OFFSET) et le COUNT(*) (sans).
+     */
+    async paginate(db: Database, { size, offset }: { size: number; offset: number }): Promise<Page> {
+        const page = this.limit(integer(size, "size", 1)).offset(offset).toSQL();
+        const count = this.#sql('COUNT(*) AS "total"', false);
+        const [rows, counted] = await Promise.all([
+            db.query(page.text, [...page.values]),
+            db.query(count.text, [...count.values]),
+        ]);
+        // PostgreSQL renvoie COUNT(*) sous forme de texte ("25") : on le convertit en nombre.
+        return { items: rows.rows, total: Number(counted.rows[0]?.["total"] ?? 0), size, offset };
+    }
+
+    /** Écrit la requête ; sans `paged`, ni tri, ni LIMIT, ni OFFSET (pour le comptage). */
+    #sql(columns: string, paged: boolean): SqlQuery {
+        const values: SqlValue[] = [];
+        const bind = (value: number): string => {
+            values.push(value);
+            return `$${values.length}`;
+        };
+        const { table, joins, conditions, orders, limit, offset } = this.#state;
+        const where = render(conditions, values);
+        let text = `SELECT ${columns} FROM ${table}${joins.map((join) => ` ${join}`).join("")}`;
+        if (where !== "") text += ` WHERE ${where}`;
+        if (paged && orders.length > 0) text += ` ORDER BY ${orders.join(", ")}`;
+        if (paged && limit !== undefined) text += ` LIMIT ${bind(limit)}`;
+        if (paged && offset !== undefined) text += ` OFFSET ${bind(offset)}`;
         return { text, values };
+    }
+
+    #order(column: string, direction: Direction): SelectQuery {
+        // TypeScript refuse déjà un autre sens ; ceci protège à l'exécution.
+        if (!DIRECTIONS.has(direction)) {
+            throw new QueryError(`Sort direction not allowed: "${direction}"`);
+        }
+        return this.#with({ orders: [...this.#state.orders, `${column} ${direction.toUpperCase()}`] });
     }
 
     /** La condition de jointure compare deux colonnes : aucune valeur, donc rien à lier. */
@@ -138,7 +212,7 @@ export class SelectQuery {
 
     /** Construit le groupe sur une requête vide, puis garde seulement ses conditions. */
     #group(join: Join, build: (group: SelectQuery) => SelectQuery): Condition {
-        const inner = build(new SelectQuery({ table: "", columns: [], joins: [], conditions: [] }));
+        const inner = build(empty(""));
         return { join, kind: "group", conditions: inner.#state.conditions };
     }
 
@@ -150,7 +224,19 @@ export class SelectQuery {
 /** Point de départ d'une requête : from("journeys", "j"). */
 export function from(table: string, alias?: string): SelectQuery {
     const quoted = alias === undefined ? quoteIdent(table) : `${quoteIdent(table)} AS ${quoteIdent(alias)}`;
-    return new SelectQuery({ table: quoted, columns: [], joins: [], conditions: [] });
+    return empty(quoted);
+}
+
+function empty(table: string): SelectQuery {
+    return new SelectQuery({ table, columns: [], joins: [], conditions: [], orders: [], limit: undefined, offset: undefined });
+}
+
+/** Un entier au moins égal à `min` : LIMIT -1 ou OFFSET 2.5 sont refusés avant d'arriver à la base. */
+function integer(value: number, name: string, min: number): number {
+    if (!Number.isInteger(value) || value < min) {
+        throw new QueryError(`${name} must be an integer >= ${min}`);
+    }
+    return value;
 }
 
 function compare(join: Join, column: string, operator: Operator, value: SqlValue): Condition {

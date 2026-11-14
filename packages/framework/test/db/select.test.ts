@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { IdentifierError } from "../../src/db/identifiers.ts";
+import type { Database, QueryResult } from "../../src/db/connection.ts";
+import { IdentifierError, UnknownSortKeyError } from "../../src/db/identifiers.ts";
 import { from, QueryError, type Operator } from "../../src/db/select.ts";
 
 describe("select", () => {
@@ -193,5 +194,117 @@ describe("jointures", () => {
         base.join("users", "u", "j.author_id", "u.id");
 
         expect(base.toSQL().text).toBe('SELECT * FROM "journeys" AS "j"');
+    });
+});
+
+describe("tri", () => {
+    it("trie par ordre croissant par défaut", () => {
+        expect(from("journeys").orderBy("created_at").toSQL().text).toBe(
+            'SELECT * FROM "journeys" ORDER BY "created_at" ASC',
+        );
+    });
+
+    it("cumule plusieurs tris dans l'ordre des appels", () => {
+        expect(from("journeys", "j").orderBy("j.created_at", "desc").orderBy("j.id", "asc").toSQL().text).toBe(
+            'SELECT * FROM "journeys" AS "j" ORDER BY "j"."created_at" DESC, "j"."id" ASC',
+        );
+    });
+
+    it("refuse une injection dans la colonne de tri", () => {
+        expect(() => from("users").orderBy("name; DROP TABLE users")).toThrow(IdentifierError);
+    });
+
+    it("refuse à l'exécution un sens hors de la liste blanche", () => {
+        const q = from("users");
+        // Reflect.apply appelle orderBy sans vérification de types, comme un code JavaScript le ferait.
+        expect(() => Reflect.apply(q.orderBy, q, ["id", "desc; DROP TABLE users"])).toThrow(QueryError);
+    });
+
+    it("trie selon une clé du client, traduite par la table de correspondance", () => {
+        const sorts = { created: "j.created_at" };
+
+        expect(from("journeys", "j").sortBy("created", sorts, "desc").toSQL().text).toBe(
+            'SELECT * FROM "journeys" AS "j" ORDER BY "j"."created_at" DESC',
+        );
+        expect(from("journeys", "j").sortBy("created", sorts).toSQL().text).toBe(
+            'SELECT * FROM "journeys" AS "j" ORDER BY "j"."created_at" ASC',
+        );
+    });
+
+    it("refuse une clé de tri inconnue du client", () => {
+        expect(() => from("journeys").sortBy("password", { created: "created_at" })).toThrow(UnknownSortKeyError);
+    });
+});
+
+describe("limit et offset", () => {
+    it("passe LIMIT et OFFSET en paramètres liés, après ceux du WHERE", () => {
+        const q = from("journeys").where("visibility", "=", "public").orderBy("id").limit(10).offset(20);
+
+        expect(q.toSQL()).toEqual({
+            text: 'SELECT * FROM "journeys" WHERE "visibility" = $1 ORDER BY "id" ASC LIMIT $2 OFFSET $3',
+            values: ["public", 10, 20],
+        });
+    });
+
+    it("accepte LIMIT sans OFFSET, et OFFSET sans LIMIT", () => {
+        expect(from("journeys").limit(5).toSQL().text).toBe('SELECT * FROM "journeys" LIMIT $1');
+        expect(from("journeys").offset(5).toSQL().text).toBe('SELECT * FROM "journeys" OFFSET $1');
+    });
+
+    it.each([-1, 2.5, Number.NaN])("refuse la valeur %s", (value: number) => {
+        expect(() => from("journeys").limit(value)).toThrow(QueryError);
+        expect(() => from("journeys").offset(value)).toThrow(QueryError);
+    });
+});
+
+/** Une fausse base : elle garde les requêtes reçues et répond ce qu'on lui a préparé. */
+function fakeDatabase(answer: (text: string) => QueryResult) {
+    const queries: { text: string; params: unknown[] }[] = [];
+    const db: Database = {
+        async query(text, params = []) {
+            queries.push({ text, params });
+            return answer(text);
+        },
+        async ping() {},
+        async close() {},
+    };
+    return { db, queries };
+}
+
+describe("paginate", () => {
+    it("exécute la page et le comptage, et renvoie la page avec le total", async () => {
+        const { db, queries } = fakeDatabase((text) =>
+            text.startsWith("SELECT COUNT")
+                ? { rows: [{ total: "25" }], rowCount: 1 }
+                : { rows: [{ id: 21 }, { id: 22 }], rowCount: 2 },
+        );
+        const q = from("journeys").select("id").where("visibility", "=", "public").orderBy("id");
+
+        const page = await q.paginate(db, { size: 10, offset: 20 });
+
+        expect(page).toEqual({ items: [{ id: 21 }, { id: 22 }], total: 25, size: 10, offset: 20 });
+        expect(queries).toEqual([
+            {
+                text: 'SELECT "id" FROM "journeys" WHERE "visibility" = $1 ORDER BY "id" ASC LIMIT $2 OFFSET $3',
+                params: ["public", 10, 20],
+            },
+            { text: 'SELECT COUNT(*) AS "total" FROM "journeys" WHERE "visibility" = $1', params: ["public"] },
+        ]);
+    });
+
+    it("compte 0 si le comptage ne renvoie aucune ligne", async () => {
+        const { db } = fakeDatabase(() => ({ rows: [], rowCount: 0 }));
+
+        expect((await from("journeys").paginate(db, { size: 10, offset: 0 })).total).toBe(0);
+    });
+
+    it.each([
+        [0, 0],
+        [10, -1],
+        [1.5, 0],
+    ])("refuse size %s et offset %s", async (size: number, offset: number) => {
+        const { db } = fakeDatabase(() => ({ rows: [], rowCount: 0 }));
+
+        await expect(from("journeys").paginate(db, { size, offset })).rejects.toThrow(QueryError);
     });
 });
