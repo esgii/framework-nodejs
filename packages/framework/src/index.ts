@@ -38,4 +38,6 @@ export type { ConfigIssue } from "./core/validate-config.js";
 export { defineTable, IdentifierError, sortColumn, UnknownSortKeyError } from "./db/identifiers.ts";
 export type { SortMap, Table } from "./db/identifiers.ts";
 export { from, QueryError, SelectQuery } from "./db/select.ts";
-export type { Column, Direction, Operator, Page, SqlQuery, SqlValue } from "./db/select.ts";
+export type { Column, Direction, Operator, Page, SqlParam, SqlQuery, SqlValue } from "./db/select.ts";
+export { deleteFrom, DeleteQuery, insert, InsertQuery, update, UpdateQuery } from "./db/write.ts";
+export type { Row } from "./db/write.ts";

@@ -1,18 +1,23 @@
+import {
+    bind,
+    compare,
+    inList,
+    isNull,
+    QueryError,
+    render,
+    type Condition,
+    type Join,
+    type Operator,
+    type SqlParam,
+    type SqlQuery,
+    type SqlValue,
+} from "./conditions.ts";
 import type { Database } from "./connection.ts";
 import { quoteIdent, sortColumn, type SortMap } from "./identifiers.ts";
 
-/** Une requête mal construite dans le code (opérateur inconnu…) : un bug, donc un 500. */
-export class QueryError extends Error {
-    override readonly name = "QueryError";
-}
-
-/** Une valeur qu'on peut comparer. Pas de null : on utilise whereNull pour ça. */
-export type SqlValue = string | number | bigint | boolean | Date;
-
-/** Les opérateurs de comparaison autorisés (liste blanche). */
-export type Operator = "=" | "<>" | "<" | "<=" | ">" | ">=" | "like" | "ilike";
-
-const OPERATORS: ReadonlySet<string> = new Set(["=", "<>", "<", "<=", ">", ">=", "like", "ilike"]);
+// Réexportés ici pour que les imports existants (index.ts, tests) restent valables.
+export { QueryError };
+export type { Operator, SqlParam, SqlQuery, SqlValue };
 
 /** Le sens d'un tri (liste blanche). */
 export type Direction = "asc" | "desc";
@@ -29,20 +34,6 @@ export interface Page {
 
 /** Une colonne choisie : "j.title", ou ["j.title", "name"] pour la renommer. */
 export type Column = string | readonly [column: string, alias: string];
-
-/** Le texte SQL, et les valeurs qui remplacent $1, $2… dans le même ordre. */
-export interface SqlQuery {
-    readonly text: string;
-    readonly values: readonly SqlValue[];
-}
-
-type Join = "AND" | "OR";
-
-type Condition =
-    | { readonly join: Join; readonly kind: "compare"; readonly column: string; readonly operator: Operator; readonly value: SqlValue }
-    | { readonly join: Join; readonly kind: "in"; readonly column: string; readonly values: readonly SqlValue[] }
-    | { readonly join: Join; readonly kind: "null"; readonly column: string; readonly not: boolean }
-    | { readonly join: Join; readonly kind: "group"; readonly conditions: readonly Condition[] };
 
 type JoinKind = "INNER" | "LEFT" | "RIGHT" | "FULL";
 
@@ -111,17 +102,17 @@ export class SelectQuery {
 
     /** column IN (…). Une liste vide ne correspond à aucune ligne. */
     whereIn(column: string, values: readonly SqlValue[]): SelectQuery {
-        return this.#add({ join: "AND", kind: "in", column: quoteIdent(column), values });
+        return this.#add(inList(column, values));
     }
 
     /** column IS NULL. */
     whereNull(column: string): SelectQuery {
-        return this.#add({ join: "AND", kind: "null", column: quoteIdent(column), not: false });
+        return this.#add(isNull(column, false));
     }
 
     /** column IS NOT NULL. */
     whereNotNull(column: string): SelectQuery {
-        return this.#add({ join: "AND", kind: "null", column: quoteIdent(column), not: true });
+        return this.#add(isNull(column, true));
     }
 
     /** Des conditions entre parenthèses, reliées aux précédentes par AND. */
@@ -177,18 +168,14 @@ export class SelectQuery {
 
     /** Écrit la requête ; sans `paged`, ni tri, ni LIMIT, ni OFFSET (pour le comptage). */
     #sql(columns: string, paged: boolean): SqlQuery {
-        const values: SqlValue[] = [];
-        const bind = (value: number): string => {
-            values.push(value);
-            return `$${values.length}`;
-        };
+        const values: SqlParam[] = [];
         const { table, joins, conditions, orders, limit, offset } = this.#state;
         const where = render(conditions, values);
         let text = `SELECT ${columns} FROM ${table}${joins.map((join) => ` ${join}`).join("")}`;
         if (where !== "") text += ` WHERE ${where}`;
         if (paged && orders.length > 0) text += ` ORDER BY ${orders.join(", ")}`;
-        if (paged && limit !== undefined) text += ` LIMIT ${bind(limit)}`;
-        if (paged && offset !== undefined) text += ` OFFSET ${bind(offset)}`;
+        if (paged && limit !== undefined) text += ` LIMIT ${bind(limit, values)}`;
+        if (paged && offset !== undefined) text += ` OFFSET ${bind(offset, values)}`;
         return { text, values };
     }
 
@@ -237,44 +224,4 @@ function integer(value: number, name: string, min: number): number {
         throw new QueryError(`${name} must be an integer >= ${min}`);
     }
     return value;
-}
-
-function compare(join: Join, column: string, operator: Operator, value: SqlValue): Condition {
-    // TypeScript refuse déjà un autre opérateur ; ceci protège à l'exécution.
-    if (!OPERATORS.has(operator)) {
-        throw new QueryError(`Operator not allowed: "${operator}"`);
-    }
-    return { join, kind: "compare", column: quoteIdent(column), operator, value };
-}
-
-/** Écrit les conditions en SQL ; chaque valeur est ajoutée à `values` et remplacée par $n. */
-function render(conditions: readonly Condition[], values: SqlValue[]): string {
-    const parts: string[] = [];
-    for (const condition of conditions) {
-        const sql = renderOne(condition, values);
-        if (sql !== "") {
-            parts.push(parts.length === 0 ? sql : `${condition.join} ${sql}`);
-        }
-    }
-    return parts.join(" ");
-}
-
-function renderOne(condition: Condition, values: SqlValue[]): string {
-    const bind = (value: SqlValue): string => {
-        values.push(value);
-        return `$${values.length}`;
-    };
-    switch (condition.kind) {
-        case "compare":
-            return `${condition.column} ${condition.operator.toUpperCase()} ${bind(condition.value)}`;
-        case "in":
-            // IN () est du SQL invalide : une liste vide ne correspond à rien.
-            return condition.values.length === 0 ? "FALSE" : `${condition.column} IN (${condition.values.map(bind).join(", ")})`;
-        case "null":
-            return `${condition.column} IS ${condition.not ? "NOT " : ""}NULL`;
-        case "group": {
-            const inner = render(condition.conditions, values);
-            return inner === "" ? "" : `(${inner})`;
-        }
-    }
 }
