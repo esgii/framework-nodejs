@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["packages/framework/test/**/*.test.ts"],
+    setupFiles: ["./packages/framework/test/setup.ts"],
     environment: "node",
     // ordre aléatoire pour repérer les tests qui dépendent les uns des autres.
     sequence: { shuffle: true },

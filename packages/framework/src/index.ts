@@ -31,6 +31,10 @@ export type {
 
 export { ConfigError, validateConfig } from "./core/validate-config.js";
 export type { ConfigIssue } from "./core/validate-config.js";
+export { Route } from "./router/route.js";
+export type { RouteBuilder } from "./router/route.js";
+export type { GroupOptions } from "./router/group.js";
+export { RouteError } from "./router/errors.js";
 
 
 // La connexion (createDatabase) reste interne : elle accepte du SQL brut,
