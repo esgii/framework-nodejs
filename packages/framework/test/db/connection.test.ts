@@ -5,8 +5,7 @@ import { createDatabase, type Database } from "../../src/db/connection.ts";
  * La base de test, séparée de la base de développement.
  * Par défaut : le conteneur Docker décrit dans la MR (port 5433).
  */
-const TEST_URL =
-    process.env["TEST_DATABASE_URL"] ?? "postgres://carnet:carnet@localhost:5433/carnet_test";
+const TEST_URL = process.env["TEST_DATABASE_URL"] ?? "postgres://postgres:test@localhost:5432/test";
 
 /** Les bases ouvertes par un test, fermées après lui : aucun test n'hérite d'un autre. */
 const opened: Database[] = [];

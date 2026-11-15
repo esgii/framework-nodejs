@@ -4,8 +4,8 @@ import { quoteIdent } from "../../src/db/identifiers.ts";
 import { from } from "../../src/index.js";
 
 /** La base de test, séparée de la base de développement (voir connection.test.ts). */
-const TEST_URL =
-    process.env["TEST_DATABASE_URL"] ?? "postgres://carnet:carnet@localhost:5433/carnet_test";
+
+const TEST_URL = process.env["TEST_DATABASE_URL"] ?? "postgres://postgres:test@localhost:5432/test";
 
 /** Une table propre à ce fichier et à ce processus, supprimée à la fin. */
 const TABLE = `paginate_${process.pid}`;
