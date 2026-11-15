@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildChain } from "../../src/core/pipeline.js";
 import { compose, MiddlewareError } from "../../src/middleware/compose.js";
 import type { Layer } from "../../src/middleware/compose.js";
 import type { Controller, HttpResponse, Middleware } from "../../src/types.js";
@@ -200,5 +201,161 @@ describe("MDW-03 · interruption de la chaîne (court-circuit)", () => {
     expect(calls).toBe(0);
     expect((await run({ token: "abc" })).status).toBe(200);
     expect(calls).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MDW-05 · compléments pour couvrir toute la liste du planning :
+//   0 / 1 / plusieurs middlewares ........ MDW-01 + « nombre de middlewares » ci-dessous
+//   oignon avant/après ................... MDW-01
+//   ordre global / groupe / route ........ « ordre d'exécution réel » ci-dessous
+//   court-circuit ........................ MDW-03
+//   erreur avant / après next ............ « propagation des erreurs » ci-dessous
+//   double next .......................... MDW-01 + « double next » ci-dessous
+//   middleware qui modifie la réponse .... MDW-01
+// La transformation des erreurs en réponse 500 est testée dans test/core/pipeline.test.ts (MDW-04).
+// ---------------------------------------------------------------------------
+
+describe("MDW-05 · nombre de middlewares", () => {
+  it("avec 1 middleware : avant, contrôleur, après", async () => {
+    const ctx: TestCtx = { log: [] };
+    await compose([trace("seul")], (c) => {
+      c.log.push("contrôleur");
+      return ok(null);
+    })(ctx);
+    expect(ctx.log).toEqual(["seul-avant", "contrôleur", "seul-après"]);
+  });
+
+  it("avec 5 middlewares : l’oignon reste symétrique", async () => {
+    const ctx: TestCtx = { log: [] };
+    const labels = ["1", "2", "3", "4", "5"];
+    await compose(labels.map(trace), (c) => {
+      c.log.push("C");
+      return ok(null);
+    })(ctx);
+    expect(ctx.log).toEqual([
+      ...labels.map((l) => `${l}-avant`),
+      "C",
+      ...[...labels].reverse().map((l) => `${l}-après`),
+    ]);
+  });
+});
+
+describe("MDW-05 · ordre d’exécution réel global → groupes → route", () => {
+  it("exécute G, G1, G2, R puis le contrôleur, et remonte dans l’ordre inverse", async () => {
+    const ctx: TestCtx = { log: [] };
+    // Une route telle que RTE-02 la produit : groupes (externe → interne) puis route.
+    const route = { middlewares: [trace("G1"), trace("G2"), trace("R")] };
+
+    const chain = buildChain([trace("G")], route);
+    await compose(chain, (c) => {
+      c.log.push("contrôleur");
+      return ok(null);
+    })(ctx);
+
+    expect(ctx.log).toEqual([
+      "G-avant",
+      "G1-avant",
+      "G2-avant",
+      "R-avant",
+      "contrôleur",
+      "R-après",
+      "G2-après",
+      "G1-après",
+      "G-après",
+    ]);
+  });
+
+  it("sans route (404), seuls les globaux s’exécutent autour de la réponse d’erreur", async () => {
+    const ctx: TestCtx = { log: [] };
+    const notFound: HttpResponse = { status: 404, headers: {}, body: null };
+    const response = await compose(
+      buildChain([trace("G")]),
+      () => notFound,
+    )(ctx);
+    expect(ctx.log).toEqual(["G-avant", "G-après"]);
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("MDW-05 · propagation des erreurs par compose", () => {
+  // compose ne transforme pas les erreurs : il les laisse remonter sous forme de
+  // promesse rejetée. C'est withErrorHandling (MDW-04) qui en fait une réponse.
+
+  it("erreur AVANT next() : promesse rejetée, contrôleur et suite non exécutés", async () => {
+    const ctx: TestCtx = { log: [] };
+    const failing: Layer<TestCtx> = async () => {
+      throw new TypeError("avant");
+    };
+    await expect(
+      compose([trace("a"), failing, trace("c")], (c) => {
+        c.log.push("contrôleur");
+        return ok(null);
+      })(ctx),
+    ).rejects.toThrow(TypeError);
+    // a n'a pas de « après » : l'erreur a traversé son await next()
+    expect(ctx.log).toEqual(["a-avant"]);
+  });
+
+  it("erreur APRÈS next() : le contrôleur a bien été exécuté, puis la promesse est rejetée", async () => {
+    const ctx: TestCtx = { log: [] };
+    const failingAfter: Layer<TestCtx> = async (_ctx, next) => {
+      await next();
+      throw new RangeError("après");
+    };
+    await expect(
+      compose([failingAfter], (c) => {
+        c.log.push("contrôleur");
+        return ok(null);
+      })(ctx),
+    ).rejects.toThrow(RangeError);
+    expect(ctx.log).toEqual(["contrôleur"]);
+  });
+
+  it("erreur du contrôleur : remonte à travers les middlewares", async () => {
+    const ctx: TestCtx = { log: [] };
+    await expect(
+      compose([trace("a")], () => {
+        throw new SyntaxError("contrôleur");
+      })(ctx),
+    ).rejects.toThrow(SyntaxError);
+    expect(ctx.log).toEqual(["a-avant"]);
+  });
+});
+
+describe("MDW-05 · double next", () => {
+  it("deux next() en parallèle → MiddlewareError", async () => {
+    const parallel: Layer<TestCtx> = async (_ctx, next) => {
+      const [first] = await Promise.all([next(), next()]);
+      return first;
+    };
+    await expect(
+      compose([parallel], () => ok(null))({ log: [] }),
+    ).rejects.toThrow(MiddlewareError);
+  });
+
+  it("le contrôleur n’est exécuté qu’une seule fois malgré le double next()", async () => {
+    let calls = 0;
+    const twice: Layer<TestCtx> = async (_ctx, next) => {
+      await next();
+      return next();
+    };
+    await expect(
+      compose([twice], () => {
+        calls++;
+        return ok(null);
+      })({ log: [] }),
+    ).rejects.toThrow(MiddlewareError);
+    expect(calls).toBe(1);
+  });
+
+  it("un double next() dans un middleware interne est aussi détecté", async () => {
+    const twice: Layer<TestCtx> = async (_ctx, next) => {
+      await next();
+      return next();
+    };
+    await expect(
+      compose([trace("a"), trace("b"), twice], () => ok(null))({ log: [] }),
+    ).rejects.toThrow(MiddlewareError);
   });
 });

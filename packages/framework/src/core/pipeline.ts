@@ -14,15 +14,17 @@ import type { HttpResponse, Middleware, RouteDefinition } from "../types.js";
  * de sécurité doivent s'appliquer aussi aux réponses d'erreur (KRN-02).
  *
  * Renvoie toujours un nouveau tableau : ni `globals` ni la route ne sont modifiés.
+ * Générique comme compose : avec une RouteDefinition, M = Middleware ; dans les
+ * tests, on peut y passer des middlewares sur un contexte simplifié.
  */
-export function buildChain(
-  globals: readonly Middleware[],
-  route?: Pick<RouteDefinition, "middlewares">,
-): Middleware[] {
+export function buildChain<M = Middleware>(
+  globals: readonly M[],
+  route?: { readonly middlewares: readonly M[] },
+): M[] {
   return [...globals, ...(route?.middlewares ?? [])];
 }
 
-/** Transforme une erreur (de type inconnu) en réponse HTTP. En pratique : le gestionnaire de CTL-08. */
+/** Transforme une erreur (de type inconnu) en réponse HTTP. En pratique : le gestionnaire. */
 export type ErrorResponder = (
   error: unknown,
 ) => HttpResponse | Promise<HttpResponse>;
