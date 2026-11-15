@@ -66,6 +66,38 @@ sudo apache2ctl configtest && sudo systemctl reload apache2
 sudo certbot --apache -d <domaine>
 ```
 
+## Déploiement sur le serveur
+
+Prérequis : un VPS Linux avec Docker (service activé au démarrage), Apache et certbot, et un enregistrement DNS `A` du sous-domaine de l'API vers l'IP du serveur. Seuls les ports 22, 80 et 443 doivent être ouverts.
+
+Première installation :
+
+```bash
+git clone -b main <url-du-dépôt> /var/www/carnet
+cd /var/www/carnet
+cat > .env <<EOF
+NODE_ENV=production
+JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')
+DB_PASSWORD=$(openssl rand -hex 32)
+CORS_ENABLED=false
+EOF
+chmod 600 .env
+sudo systemctl enable docker
+sudo docker compose up -d --build
+```
+
+Les secrets sont générés sur le serveur et n'en sortent pas. Le dossier ne doit être publié par aucun `DocumentRoot` Apache. Configurer ensuite le reverse proxy (section précédente).
+
+Mise à jour :
+
+```bash
+cd /var/www/carnet
+git pull
+sudo docker compose up -d --build
+```
+
+Après un redémarrage de la machine, Apache, Docker et les conteneurs (`restart: unless-stopped`) repartent seuls.
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` tourne sur chaque pull request et sur chaque push sur `main`. Les étapes s'arrêtent à la première erreur :
