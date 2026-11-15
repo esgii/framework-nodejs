@@ -13,6 +13,16 @@ API de carnets de voyage, construite sur un framework HTTP maison (`packages/fra
 | `npm start` | Lance le bundle (`dist/main.js`), lit `.env` s'il existe |
 | `npm run check-deps` | Échoue si un `package.json` contient une dépendance hors liste blanche |
 
+## Intégration continue
+
+`.github/workflows/ci.yml` tourne sur chaque pull request et sur chaque push sur `main`. Les étapes s'arrêtent à la première erreur :
+
+1. `npm ci` : installe exactement les versions de `package-lock.json` ;
+2. `npm run typecheck` : le build ne vérifie pas les types, c'est cette étape qui le fait ;
+3. `npm test` : tests et seuil de couverture à 100 %, avec un service PostgreSQL 16 disponible (`DATABASE_URL`) ;
+4. `npm run build` : le bundle de production doit se construire ;
+5. `npm run check-deps` : aucune dépendance hors liste.
+
 ## Dépendances autorisées
 
 Le projet n'a droit qu'à une liste fermée de dépendances npm : `typescript`, `@types/node`, `rolldown`, `vitest`, `@vitest/coverage-v8`, `tsx`, `pg`, `@types/pg`, `bcryptjs`, `@types/bcryptjs`, `jsonwebtoken`, `@types/jsonwebtoken`. Les paquets internes `@carnet/*` sont toujours acceptés.
