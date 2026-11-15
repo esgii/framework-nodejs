@@ -1,8 +1,8 @@
 import type {
-  Controller,
   HttpMethod,
   Middleware,
   RouteDefinition,
+  RouteController,
   RouteOptions,
   RouteSchemas,
 } from "../types.js";
@@ -29,7 +29,7 @@ export interface RouteBuilder {
 function register(
   method: HttpMethod,
   path: string,
-  controller: Controller,
+  controller: RouteController,
   options: RouteOptions = {},
 ): RouteBuilder {
   // Avec exactOptionalPropertyTypes, une clé optionnelle doit être absente,
@@ -78,15 +78,15 @@ function register(
  *   Route.get('/journeys/{id}', show).name('journeys.show').middleware(auth);
  */
 export const Route = {
-  get: (path: string, controller: Controller, options?: RouteOptions) =>
+  get: (path: string, controller: RouteController, options?: RouteOptions) =>
     register("GET", path, controller, options),
-  post: (path: string, controller: Controller, options?: RouteOptions) =>
+  post: (path: string, controller: RouteController, options?: RouteOptions) =>
     register("POST", path, controller, options),
-  put: (path: string, controller: Controller, options?: RouteOptions) =>
+  put: (path: string, controller: RouteController, options?: RouteOptions) =>
     register("PUT", path, controller, options),
-  patch: (path: string, controller: Controller, options?: RouteOptions) =>
+  patch: (path: string, controller: RouteController, options?: RouteOptions) =>
     register("PATCH", path, controller, options),
-  delete: (path: string, controller: Controller, options?: RouteOptions) =>
+  delete: (path: string, controller: RouteController, options?: RouteOptions) =>
     register("DELETE", path, controller, options),
   group,
   /** Remet le registre à zéro. Réservé aux tests (appelé par test/setup.ts). */

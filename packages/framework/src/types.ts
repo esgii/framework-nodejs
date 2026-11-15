@@ -87,12 +87,20 @@ export interface RouteOptions extends RouteSchemas {
   middleware?: readonly Middleware[];
   version?: string;
 }
+/**
+ * Contrôleur tel que stocké dans une route. Écrit comme une méthode : un
+ * Controller<{ id: string }, { title: string }> y est accepté, alors qu'un
+ * type fonction strict le refuserait. Sans any ni as.
+ */
+export type RouteController = {
+  bivarianceHack(ctx: Context): HttpResponse | Promise<HttpResponse>;
+}["bivarianceHack"];
 
 /** Une route telle que stockée dans le registre. */
 export interface RouteDefinition {
   readonly method: HttpMethod;
   readonly path: string;
-  readonly controller: Controller;
+  readonly controller: RouteController;
   readonly middlewares: Middleware[];
   name: string | undefined; // PAS readonly : .middleware() y ajoute des éléments
   version: string | undefined;
