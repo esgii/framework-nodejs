@@ -13,6 +13,22 @@ API de carnets de voyage, construite sur un framework HTTP maison (`packages/fra
 | `npm start` | Lance le bundle (`dist/main.js`), lit `.env` s'il existe |
 | `npm run check-deps` | Échoue si un `package.json` contient une dépendance hors liste blanche |
 
+## Image Docker
+
+Le `Dockerfile` a deux étapes :
+
+- **build** : installe toutes les dépendances, lance `npm run typecheck` puis `npm run build` ;
+- **runtime** : repart d'une image `node:22-alpine` vide, installe seulement les dépendances de production (`npm ci --omit=dev`) et copie `dist/`. Aucun fichier `.ts` ni outil de développement n'est présent dans l'image finale.
+
+Le processus tourne avec l'utilisateur `node` (pas `root`). Les fichiers envoyés vont dans `/data/uploads` (`UPLOAD_DIR`), qui sera un volume. La configuration passe par les variables d'environnement, il n'y a pas de `.env` dans l'image.
+
+```bash
+docker build -t carnet-api .
+docker run --rm --env-file .env -p 3000:3000 carnet-api
+```
+
+Le `HEALTHCHECK` interroge `GET /v1/status` : il restera en échec tant que le serveur HTTP (kernel) et la route de statut n'existent pas. La copie des migrations SQL sera ajoutée avec DB-01.
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` tourne sur chaque pull request et sur chaque push sur `main`. Les étapes s'arrêtent à la première erreur :
