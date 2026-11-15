@@ -13,6 +13,7 @@ import {
   currentPrefix,
   currentVersion,
 } from "./registry.js";
+import { group, joinPaths } from "./group.js";
 
 /** Objet renvoyé par Route.get/post/... pour chaîner .name() et .middleware(). */
 export interface RouteBuilder {
@@ -34,9 +35,13 @@ function register(
   if (options.body !== undefined) schemas.body = options.body;
   if (options.query !== undefined) schemas.query = options.query;
 
+  // Lu maintenant, pendant que le groupe est encore sur la pile : si .name()
+  // est appelé plus tard, hors du groupe, le nom reste correct.
+  const namePrefix = currentNamePrefix();
+
   const def: RouteDefinition = {
     method,
-    path: currentPrefix() + path,
+    path: joinPaths(currentPrefix(), path),
     controller,
     middlewares: [...currentMiddlewares(), ...(options.middleware ?? [])],
     name: undefined,
@@ -47,9 +52,8 @@ function register(
 
   const builder: RouteBuilder = {
     name(name) {
-      // Le préfixe du groupe est figé au moment de la déclaration : le nom
-      // stocké est le nom final (exigence de RTE-02).
-      def.name = currentNamePrefix() + name;
+      // Le nom stocké est le nom final, préfixes de groupes compris.
+      def.name = namePrefix + name;
       return builder;
     },
     middleware(...middlewares) {
@@ -79,4 +83,5 @@ export const Route = {
     register("PATCH", path, controller, options),
   delete: (path: string, controller: Controller, options?: RouteOptions) =>
     register("DELETE", path, controller, options),
+  group,
 };
