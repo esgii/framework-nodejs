@@ -53,7 +53,7 @@ describe("toResponse", () => {
     });
 
     it("lists the invalid fields for a 422", () => {
-        const details = [{ field: "title", message: "Title is required" }];
+        const details = [{ field: "title", code: "required", message: "Title is required" }];
 
         expect(new UnprocessableError(details).toResponse().body).toEqual({
             error: { code: "VALIDATION_FAILED", message: "Validation failed", details },
@@ -61,7 +61,7 @@ describe("toResponse", () => {
     });
 
     it("keeps the details of a 400", () => {
-        const details = [{ field: "body", message: "Invalid JSON" }];
+        const details = [{ field: "body", code: "json", message: "Invalid JSON" }];
 
         expect(new BadRequestError("Bad JSON", details).details).toEqual(details);
     });
