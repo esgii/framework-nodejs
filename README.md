@@ -11,6 +11,13 @@ API de carnets de voyage, construite sur un framework HTTP maison (`packages/fra
 | `npm test` | Lance les tests avec le seuil de couverture à 100 % |
 | `npm run build` | Construit le bundle de production dans `dist/` |
 | `npm start` | Lance le bundle (`dist/main.js`), lit `.env` s'il existe |
+| `npm run check-deps` | Échoue si un `package.json` contient une dépendance hors liste blanche |
+
+## Dépendances autorisées
+
+Le projet n'a droit qu'à une liste fermée de dépendances npm : `typescript`, `@types/node`, `rolldown`, `vitest`, `@vitest/coverage-v8`, `tsx`, `pg`, `@types/pg`, `bcryptjs`, `@types/bcryptjs`, `jsonwebtoken`, `@types/jsonwebtoken`. Les paquets internes `@carnet/*` sont toujours acceptés.
+
+`scripts/check-deps.ts` lit le `package.json` racine et celui de chaque workspace, liste tous les paquets hors liste, puis s'arrête avec le code 1 s'il en a trouvé. La CI le lance sur chaque PR. Pour autoriser un nouveau paquet, il faut l'accord du formateur, puis l'ajouter à la liste dans ce script.
 
 ## Build de production
 
