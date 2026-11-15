@@ -53,6 +53,19 @@ docker compose down            # arrête, les volumes (données) sont conservés
 
 `docker compose down -v` supprime aussi les volumes, donc **toute la base et les fichiers envoyés**.
 
+## Reverse proxy HTTPS
+
+Le serveur de production fait déjà tourner Apache sur les ports 80 et 443 pour d'autres sites. L'API n'a donc pas son propre proxy (Caddy) dans `docker-compose.yml` : c'est Apache qui reçoit les requêtes HTTPS du sous-domaine de l'API et les transmet à `127.0.0.1:3000`, le seul port publié par le conteneur `api`.
+
+`deploy/apache/carnet.conf` est le modèle du site Apache (remplacer `carnet.example.com` par le vrai nom de domaine). Il a besoin des modules `proxy`, `proxy_http` et `headers`. Le certificat Let's Encrypt est obtenu et renouvelé par certbot, qui ajoute lui-même le site HTTPS et la redirection depuis HTTP :
+
+```bash
+sudo a2enmod proxy proxy_http headers
+sudo a2ensite carnet
+sudo apache2ctl configtest && sudo systemctl reload apache2
+sudo certbot --apache -d <domaine>
+```
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` tourne sur chaque pull request et sur chaque push sur `main`. Les étapes s'arrêtent à la première erreur :
