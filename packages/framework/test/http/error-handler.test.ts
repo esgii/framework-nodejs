@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toErrorResponse } from "../../src/http/error-handler.ts";
+import { UnknownSortKeyError } from "../../src/db/identifiers.ts";
 import { NotFoundError, TooManyRequestsError } from "../../src/http/errors.ts";
 
 /** Un logger qui garde ce qu'il reçoit, pour le vérifier dans le test. */
@@ -23,6 +24,21 @@ describe("toErrorResponse", () => {
 
         expect(response.status).toBe(404);
         expect(response.body).toEqual({ error: { code: "NOT_FOUND", message: "Journey not found", details: [] } });
+    });
+
+    it("turns an unknown sort key from the client into a 400", () => {
+        const { entries, log } = fakeLogger();
+        const response = toErrorResponse(new UnknownSortKeyError("price", ["created", "steps"]), "production", log);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({
+            error: {
+                code: "BAD_REQUEST",
+                message: 'Unknown sort key "price"',
+                details: [{ field: "sort", code: "unknown_sort", message: "Allowed values: created, steps" }],
+            },
+        });
+        expect(entries.length).toBe(1);
     });
 
     it("keeps the extra headers of an HttpError", () => {

@@ -1,5 +1,6 @@
+import { UnknownSortKeyError } from "../db/identifiers.ts";
 import type { HttpResponse } from "../types.ts";
-import { HttpError, InternalError } from "./errors.ts";
+import { BadRequestError, HttpError, InternalError } from "./errors.ts";
 
 /** Où tourne l'app : les détails ne sont montrés qu'en développement. */
 export type Environment = "production" | "development";
@@ -10,11 +11,22 @@ export type ErrorLogger = (entry: Record<string, unknown>) => void;
 /**
  * Transforme tout ce qui a été lancé en réponse au format d'erreur unique.
  * - Une HttpError (404, 422...) a été lancée exprès : elle est envoyée telle quelle.
+ * - Une clé de tri inconnue vient du client : elle devient un 400.
  * - Tout le reste est un bug : 500. En production, le client ne reçoit qu'un message
  *   générique, jamais la trace ni un message de la base de données.
  * L'erreur est toujours écrite dans les logs du serveur.
  */
 export function toErrorResponse(thrown: unknown, env: Environment, log: ErrorLogger): HttpResponse {
+    // La couche base de données ne connaît pas HTTP : c'est ici qu'on traduit son erreur en 400.
+    if (thrown instanceof UnknownSortKeyError) {
+        const message = `Allowed values: ${thrown.allowed.join(", ")}`;
+        return toErrorResponse(
+            new BadRequestError(thrown.message, [{ field: "sort", code: "unknown_sort", message }]),
+            env,
+            log,
+        );
+    }
+
     if (thrown instanceof HttpError) {
         log({ status: thrown.status, code: thrown.code, message: thrown.message });
         return thrown.toResponse();

@@ -61,7 +61,7 @@ describe("toResponse", () => {
     });
 
     it("keeps the details of a 400", () => {
-        const details = [{ field: "body", code: "json", message: "Invalid JSON" }];
+        const details = [{ field: "body", code: "invalid_json", message: "Invalid JSON" }];
 
         expect(new BadRequestError("Bad JSON", details).details).toEqual(details);
     });
