@@ -10,7 +10,9 @@
     "dev": "tsx watch --clear-screen=false --env-file=.env apps/api/src/main.ts",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --coverage",
-    "build": "rolldown -c"
+    "build": "rolldown -c",
+    "start": "node --enable-source-maps --env-file-if-exists=.env dist/main.js",
+    "check-deps": "node scripts/check-deps.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
