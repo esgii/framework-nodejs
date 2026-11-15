@@ -8,10 +8,12 @@ import type {
 } from "../types.js";
 import {
   addRoute,
+  assertNotFrozen,
   currentMiddlewares,
   currentNamePrefix,
   currentPrefix,
   currentVersion,
+  freezeRegistry,
   resetRegistry,
 } from "./registry.js";
 import { group, joinPaths } from "./group.js";
@@ -53,11 +55,13 @@ function register(
 
   const builder: RouteBuilder = {
     name(name) {
+      assertNotFrozen();
       // Le nom stocké est le nom final, préfixes de groupes compris.
       def.name = namePrefix + name;
       return builder;
     },
     middleware(...middlewares) {
+      assertNotFrozen();
       def.middlewares.push(...middlewares);
       return builder;
     },
@@ -87,4 +91,6 @@ export const Route = {
   group,
   /** Remet le registre à zéro. Réservé aux tests (appelé par test/setup.ts). */
   clear: resetRegistry,
+  /** Fige le registre et vérifie l'unicité des noms. Appelé par le kernel au démarrage. */
+  freeze: freezeRegistry,
 };
