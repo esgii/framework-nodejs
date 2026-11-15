@@ -1,10 +1,5 @@
 import type { Middleware, RouteDefinition } from "../types.js";
 
-/**
- * Contexte d'un groupe de routes. La pile est remplie par Route.group (RTE-02) ;
- * en RTE-01 elle reste vide, mais register() la lit déjà, donc RTE-02 n'aura
- * qu'à pousser/dépiler sans toucher à route.ts.
- */
 export interface GroupContext {
   readonly prefix: string;
   readonly namePrefix: string;
@@ -47,7 +42,9 @@ export function currentVersion(): string | undefined {
     ?.version;
 }
 
-/** Remise à zéro brute ; RTE-03 l'exposera en Route.clear() et videra aussi les noms et le cache. */
+/**
+ * Remet le registre à zéro (exposé en Route.clear()).
+ */
 export function resetRegistry(): void {
   routes.length = 0;
   groupStack.length = 0;

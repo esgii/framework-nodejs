@@ -1,12 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Route } from "../../src/router/route.js";
 import { joinPaths } from "../../src/router/group.js";
 import { RouteError } from "../../src/router/errors.js";
-import {
-  getGroupStack,
-  getRoutes,
-  resetRegistry,
-} from "../../src/router/registry.js";
+import { getGroupStack, getRoutes } from "../../src/router/registry.js";
 import type { Controller, Middleware } from "../../src/types.js";
 
 const ctrl: Controller = () => ({ status: 200, headers: {}, body: null });
@@ -16,8 +12,6 @@ const owner: Middleware = (_ctx, next) => next();
 const audit: Middleware = (_ctx, next) => next();
 
 describe("RTE-02 · groupes de routes imbriqués", () => {
-  beforeEach(() => resetRegistry());
-
   it("combine chemin, nom et middlewares sur 3 niveaux", () => {
     Route.group({ prefix: "/api", middleware: [auth], name: "api." }, () => {
       Route.group(

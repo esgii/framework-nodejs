@@ -12,6 +12,7 @@ import {
   currentNamePrefix,
   currentPrefix,
   currentVersion,
+  resetRegistry,
 } from "./registry.js";
 import { group, joinPaths } from "./group.js";
 
@@ -84,4 +85,6 @@ export const Route = {
   delete: (path: string, controller: Controller, options?: RouteOptions) =>
     register("DELETE", path, controller, options),
   group,
+  /** Remet le registre à zéro. Réservé aux tests (appelé par test/setup.ts). */
+  clear: resetRegistry,
 };

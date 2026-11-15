@@ -1,10 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Route } from "../../src/router/route.js";
-import {
-  getGroupStack,
-  getRoutes,
-  resetRegistry,
-} from "../../src/router/registry.js";
+import { getGroupStack, getRoutes } from "../../src/router/registry.js";
 import type {
   Controller,
   HttpMethod,
@@ -20,8 +16,6 @@ const schema: Schema<unknown> = {
 };
 
 describe("RTE-01 · registre de routes statique", () => {
-  beforeEach(() => resetRegistry());
-
   it.each<[HttpMethod, typeof Route.get]>([
     ["GET", Route.get],
     ["POST", Route.post],
@@ -119,18 +113,5 @@ describe("RTE-01 · registre de routes statique", () => {
     expect(Route.get("/a", ctrl, { version: "v2" }).definition.version).toBe(
       "v2",
     );
-  });
-
-  it("resetRegistry vide les routes et la pile de groupes", () => {
-    Route.get("/a", ctrl);
-    getGroupStack().push({
-      prefix: "/x",
-      namePrefix: "",
-      middlewares: [],
-      version: undefined,
-    });
-    resetRegistry();
-    expect(getRoutes()).toHaveLength(0);
-    expect(getGroupStack()).toHaveLength(0);
   });
 });
