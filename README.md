@@ -29,6 +29,30 @@ docker run --rm --env-file .env -p 3000:3000 carnet-api
 
 Le `HEALTHCHECK` interroge `GET /v1/status` : il restera en échec tant que le serveur HTTP (kernel) et la route de statut n'existent pas. La copie des migrations SQL sera ajoutée avec DB-01.
 
+## Docker Compose
+
+`docker-compose.yml` lance deux services :
+
+- **db** : PostgreSQL 16, sans port publié (joignable seulement par l'API, sur le réseau interne de Compose). Ses données sont dans le volume nommé `pgdata` ;
+- **api** : l'image du `Dockerfile`, lancée quand `db` est prête (healthcheck `pg_isready`). Elle lit `.env`, mais Compose impose `NODE_ENV=production`, `UPLOAD_DIR=/data/uploads` (volume `uploads`) et une `DATABASE_URL` qui pointe vers `db`. Le port 3000 n'est publié que sur `127.0.0.1` : depuis Internet, l'accès passera par le reverse proxy.
+
+Les deux services redémarrent seuls (`restart: unless-stopped`), y compris après un redémarrage de la machine.
+
+`.env` doit contenir `DB_PASSWORD` (Compose refuse de démarrer sinon). Générer une valeur sans caractère spécial, car elle est insérée dans une URL :
+
+```bash
+openssl rand -hex 32
+```
+
+```bash
+docker compose up -d --build   # construit l'image et démarre db puis api
+docker compose ps              # état et healthchecks
+docker compose logs -f api
+docker compose down            # arrête, les volumes (données) sont conservés
+```
+
+`docker compose down -v` supprime aussi les volumes, donc **toute la base et les fichiers envoyés**.
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` tourne sur chaque pull request et sur chaque push sur `main`. Les étapes s'arrêtent à la première erreur :
