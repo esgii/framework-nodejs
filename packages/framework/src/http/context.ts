@@ -36,6 +36,7 @@ export function buildContext(
         req,
         params,
         query: url.searchParams,
+        headers: req.headers,
         body: undefined,
         ip: getClientIp(req, trustProxy),
         version: route?.version ?? "",

@@ -2,8 +2,8 @@ import type { Context, HttpResponse } from "../types.ts";
 
 /**
  * Exécute un contrôleur (synchrone ou asynchrone) et vérifie qu'il a renvoyé une vraie HttpResponse.
- * Accepte n'importe quelle fonction : les routes rangent les contrôleurs en Controller<never, never>,
- * et à l'exécution, un contrôleur bogué peut renvoyer n'importe quoi.
+ * Accepte n'importe quelle fonction : une route range son contrôleur typé (Controller<{ id: string }>...)
+ * en RouteController, et à l'exécution, un contrôleur bogué peut renvoyer n'importe quoi.
  */
 export async function runController(
     controller: (ctx: never) => unknown,

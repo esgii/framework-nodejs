@@ -38,8 +38,3 @@ export function html(content: string, status = 200): HttpResponse {
 export function stream(readable: Readable, contentType: string): HttpResponse {
     return { status: 200, headers: { "content-type": contentType }, body: readable };
 }
-
-/** Redirection vers une autre adresse (302 par défaut). */
-export function redirect(url: string, status = 302): HttpResponse {
-    return { status, headers: { location: url }, body: null };
-}

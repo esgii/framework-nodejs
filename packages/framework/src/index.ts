@@ -12,10 +12,31 @@ export {
   html,
   json,
   noContent,
-  redirect,
   stream,
   text,
 } from "./http/response.ts";
+
+// L'app ajoute ses propres formats (XML, CSV...) sans toucher au framework .
+export { registerSerializer } from "./http/serializers.ts";
+export type { SerializerFn } from "./http/serializers.ts";
+
+// Les erreurs que l'app peut lancer : le gestionnaire les envoie au format unique .
+// La classe HttpError remplace ici l'interface du même nom venue de types.ts :
+// elle l'implémente, donc rien ne change pour ceux qui l'utilisaient comme type.
+export {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  HttpError,
+  InternalError,
+  MethodNotAllowedError,
+  NotFoundError,
+  PayloadTooLargeError,
+  TooManyRequestsError,
+  UnauthorizedError,
+  UnprocessableError,
+  UnsupportedMediaTypeError,
+} from "./http/errors.ts";
 
 export type {
   AppEnv,
@@ -36,14 +57,33 @@ export type { RouteBuilder } from "./router/route.js";
 export type { GroupOptions } from "./router/group.js";
 export { RouteError } from "./router/errors.js";
 
-
 // La connexion (createDatabase) reste interne : elle accepte du SQL brut,
 // l'app ne doit jamais pouvoir s'en servir directement.
-export { defineTable, IdentifierError, sortColumn, UnknownSortKeyError } from "./db/identifiers.ts";
+export {
+  defineTable,
+  IdentifierError,
+  sortColumn,
+  UnknownSortKeyError,
+} from "./db/identifiers.ts";
 export type { SortMap, Table } from "./db/identifiers.ts";
 export { from, QueryError, SelectQuery } from "./db/select.ts";
-export type { Column, Direction, Operator, Page, SqlParam, SqlQuery, SqlValue } from "./db/select.ts";
-export { deleteFrom, DeleteQuery, insert, InsertQuery, update, UpdateQuery } from "./db/write.ts";
+export type {
+  Column,
+  Direction,
+  Operator,
+  Page,
+  SqlParam,
+  SqlQuery,
+  SqlValue,
+} from "./db/select.ts";
+export {
+  deleteFrom,
+  DeleteQuery,
+  insert,
+  InsertQuery,
+  update,
+  UpdateQuery,
+} from "./db/write.ts";
 export type { Row } from "./db/write.ts";
 export { RowDecodeError } from "./db/decode.ts";
 export type { Decoder } from "./db/decode.ts";

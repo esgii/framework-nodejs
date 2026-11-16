@@ -1,9 +1,7 @@
 import type { ServerResponse } from "node:http";
-import { once } from "node:events";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { HttpResponse } from "../types.ts";
-import { InternalError } from "./errors.ts";
 import { JSON_CONTENT_TYPE, serializers } from "./serializers.ts";
 
 /**
@@ -32,39 +30,22 @@ export async function send(res: ServerResponse, response: HttpResponse): Promise
     return true;
 }
 
-/** Envoie un flux morceau par morceau, et gère la panne de la source ou le départ du client. */
+/**
+ * Envoie un flux morceau par morceau avec pipeline, qui s'occupe de tout :
+ * il lit la source au rythme du client, la détruit si le client part,
+ * et coupe la connexion si la source tombe en panne.
+ */
 async function sendStream(
     res: ServerResponse,
     status: number,
     headers: Record<string, string>,
     source: Readable,
 ): Promise<void> {
-    // Une erreur que personne n'écoute fait planter tout le serveur : on garde un écouteur jusqu'au bout.
-    // pipeline voit quand même l'erreur et la traite.
-    const ignore = () => {};
-    source.on("error", ignore);
-    try {
-        // On attend la première donnée : un fichier impossible à ouvrir échoue ici,
-        // avant l'envoi des en-têtes, donc le client peut encore recevoir un 500 propre.
-        await once(source, "readable");
-    } catch {
-        source.off("error", ignore);
-        source.destroy();
-        const failed = new InternalError().toResponse();
-        res.writeHead(failed.status, failed.headers);
-        res.end(JSON.stringify(failed.body));
-        return;
-    }
-
     res.writeHead(status, headers);
     try {
-        // pipeline envoie les morceaux au rythme du client. Si le client part,
-        // il détruit la source ; si la source tombe en panne, il coupe la connexion.
         await pipeline(source, res);
     } catch {
         // Les en-têtes sont déjà partis : on ne peut plus changer le statut.
-        // La connexion a été coupée, ce qui indique au client que le fichier est incomplet.
-    } finally {
-        source.off("error", ignore);
+        // La connexion coupée indique au client que la réponse est incomplète.
     }
 }
