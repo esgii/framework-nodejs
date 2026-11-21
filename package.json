@@ -15,13 +15,14 @@
     "check-deps": "node scripts/check-deps.ts"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
     "@vitest/coverage-v8": "^5.1.0",
+    "pg": "^8.23.1",
     "rolldown": "^1.2.16",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0",
-    "pg": "^8.23.1"
+    "vitest": "^5.1.0"
   }
 }
