@@ -5,6 +5,7 @@ import {
 } from "../http/errors.js";
 import type { HttpMethod, RouteDefinition } from "../types.js";
 import { compile, matchPattern, type CompiledPattern } from "./compile.js";
+import { versionedPath } from "./group.js";
 
 /** Une route trouvée, avec les paramètres lus dans le chemin (déjà décodés). */
 export interface RouteMatch {
@@ -72,9 +73,11 @@ export function createResolver(routes: readonly RouteDefinition[]): Resolver {
   const dynamics: DynamicRoute[] = [];
 
   for (const route of routes) {
-    const compiled = compile(route.path);
+    // La version fait partie du chemin comparé : '/journeys' en v2 devient '/v2/journeys'.
+    const path = versionedPath(route);
+    const compiled = compile(path);
     if (compiled.isStatic) {
-      const key = staticKey(route.method, trimTrailingSlash(route.path));
+      const key = staticKey(route.method, trimTrailingSlash(path));
       // Même règle que pour les dynamiques : la première route déclarée gagne.
       if (!statics.has(key)) statics.set(key, route);
     } else {

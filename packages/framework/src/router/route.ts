@@ -16,7 +16,7 @@ import {
   freezeRegistry,
   resetRegistry,
 } from "./registry.js";
-import { group, joinPaths } from "./group.js";
+import { assertVersion, group, joinPaths, version } from "./group.js";
 
 /** Objet renvoyé par Route.get/post/... pour chaîner .name() et .middleware(). */
 export interface RouteBuilder {
@@ -41,6 +41,8 @@ function register(
   // Lu maintenant, pendant que le groupe est encore sur la pile : si .name()
   // est appelé plus tard, hors du groupe, le nom reste correct.
   const namePrefix = currentNamePrefix();
+
+  if (options.version !== undefined) assertVersion(options.version);
 
   const def: RouteDefinition = {
     method,
@@ -89,6 +91,8 @@ export const Route = {
   delete: (path: string, controller: RouteController, options?: RouteOptions) =>
     register("DELETE", path, controller, options),
   group,
+  /** Déclare des routes dans une version : Route.version('v2', () => { ... }). */
+  version,
   /** Remet le registre à zéro. Réservé aux tests (appelé par test/setup.ts). */
   clear: resetRegistry,
   /** Fige le registre et vérifie l'unicité des noms. Appelé par le kernel au démarrage. */
