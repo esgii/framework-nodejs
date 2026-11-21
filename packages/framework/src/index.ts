@@ -74,3 +74,4 @@ export {
 } from "./security/password.ts";
 export { authenticate } from "./middleware/auth.ts";
 export type { AuthOptions } from "./middleware/auth.ts";
+export { requireRole } from "./middleware/role.ts";
