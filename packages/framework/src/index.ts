@@ -56,6 +56,9 @@ export { Route } from "./router/route.js";
 export type { RouteBuilder } from "./router/route.js";
 export type { GroupOptions } from "./router/group.js";
 export { RouteError } from "./router/errors.js";
+// Générer l'URL d'une route nommée, version comprise : url("journeys.show", { journeyId: 3 }).
+export { url } from "./router/url.js";
+export type { UrlParams } from "./router/url.js";
 
 // La connexion (createDatabase) reste interne : elle accepte du SQL brut,
 // l'app ne doit jamais pouvoir s'en servir directement.

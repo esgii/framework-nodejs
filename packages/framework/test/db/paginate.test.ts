@@ -13,6 +13,8 @@ let db: Database;
 
 beforeAll(async () => {
     db = createDatabase(TEST_URL, () => {});
+    // Une table laissée par un lancement interrompu ne doit pas faire échouer celui-ci (QA-01).
+    await db.query(`DROP TABLE IF EXISTS ${quoteIdent(TABLE)}`);
     // 25 lignes, numérotées de 1 à 25.
     await db.query(`CREATE TABLE ${quoteIdent(TABLE)} AS SELECT n AS id FROM generate_series(1, 25) AS n`);
 });

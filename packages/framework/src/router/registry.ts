@@ -1,5 +1,6 @@
 import type { Middleware, RouteDefinition } from "../types.js";
 import { RouteError } from "./errors.js";
+import { assertVersion } from "./version.js";
 
 /**
  * Contexte d'un groupe de routes. La pile est remplie par Route.group ;
@@ -43,9 +44,14 @@ export function addRoute(def: RouteDefinition): void {
 
 /**
  * Fige le registre (exposé en Route.freeze(), appelé par le kernel au démarrage).
+ *
+ * `defaultVersion` vient de la configuration (config.api.defaultVersion) : une route
+ * déclarée sans version la reçoit ici (VER-02). '/users' devient donc '/v1/users'.
+ * Après le gel, toutes les routes ont une version.
  */
-export function freezeRegistry(): void {
+export function freezeRegistry(defaultVersion: string): void {
   if (frozen) return;
+  assertVersion(defaultVersion);
 
   // Construite à part puis recopiée : si un doublon lève, `names` reste vide et
   // un nouvel appel donnera la même erreur (et non un faux doublon avec elle-même).
@@ -61,6 +67,8 @@ export function freezeRegistry(): void {
     found.set(route.name, route);
   }
 
+  // Seulement après la vérification des noms : si elle lève, aucune route n'a été modifiée.
+  for (const route of routes) route.version ??= defaultVersion;
   for (const [name, route] of found) names.set(name, route);
   frozen = true;
 }
