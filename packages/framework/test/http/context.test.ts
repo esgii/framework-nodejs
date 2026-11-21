@@ -37,6 +37,13 @@ describe("buildContext", () => {
         expect(query.get("missing")).toBeNull();
     });
 
+    it("gives the request headers", () => {
+        const { headers } = buildContext(fakeRequest("/journeys", { authorization: "Bearer abc" }));
+
+        expect(headers["authorization"]).toBe("Bearer abc");
+        expect(headers["accept"]).toBeUndefined();
+    });
+
     it("falls back to / when the request has no url", () => {
         const req = fakeRequest("/");
         delete req.url;

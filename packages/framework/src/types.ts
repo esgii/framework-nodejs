@@ -1,7 +1,7 @@
 /**
  * Contrat public du framework (SET-08).
  */
-import type { IncomingMessage } from "node:http";
+import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 
 /** Paramètres de la query (?email=a&name=b) : l'objet URL vu en cours. */
 export type QueryParams = URLSearchParams;
@@ -46,6 +46,8 @@ export interface Context<P = Record<string, string>, B = unknown> {
   readonly req: IncomingMessage;
   readonly params: P;
   readonly query: QueryParams;
+  /** Les en-têtes de la requête, noms en minuscules (ex. headers["authorization"]). */
+  readonly headers: IncomingHttpHeaders;
   readonly body: B;
   readonly ip: string;
   readonly version: string;
