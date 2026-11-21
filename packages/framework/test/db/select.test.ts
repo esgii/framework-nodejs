@@ -297,6 +297,51 @@ describe("tri", () => {
   });
 });
 
+describe("recherche plein texte", () => {
+  it("cherche dans le titre et le résumé, avec le mot en paramètre lié", () => {
+    const q = from("journeys", "j")
+      .where("j.visibility", "=", "public")
+      .whereSearch(["j.title", "j.summary"], "montagne");
+
+    expect(q.toSQL()).toEqual({
+      text:
+        'SELECT * FROM "journeys" AS "j" WHERE "j"."visibility" = $1 AND ' +
+        "to_tsvector('french', coalesce(\"j\".\"title\", '') || ' ' || coalesce(\"j\".\"summary\", '')) @@ plainto_tsquery('french', $2)",
+      values: ["public", "montagne"],
+    });
+  });
+
+  it("accepte une seule colonne", () => {
+    expect(from("journeys").whereSearch(["title"], "rome").toSQL().text).toBe(
+      "SELECT * FROM \"journeys\" WHERE to_tsvector('french', coalesce(\"title\", '')) @@ plainto_tsquery('french', $1)",
+    );
+  });
+
+  it("garde un texte malveillant dans values, jamais dans le SQL", () => {
+    const evil = "'); DROP TABLE users; --";
+    const { text, values } = from("journeys")
+      .whereSearch(["title"], evil)
+      .toSQL();
+
+    expect(text.includes("DROP")).toBe(false);
+    expect(values).toEqual([evil]);
+  });
+
+  it.each(["", "   "])("ne filtre rien avec le texte %j", (text: string) => {
+    expect(from("journeys").whereSearch(["title"], text).toSQL()).toEqual({
+      text: 'SELECT * FROM "journeys"',
+      values: [],
+    });
+  });
+
+  it("refuse une injection dans un nom de colonne, et une liste de colonnes vide", () => {
+    expect(() =>
+      from("journeys").whereSearch(["title) OR 1=1 --"], "rome"),
+    ).toThrow(IdentifierError);
+    expect(() => from("journeys").whereSearch([], "rome")).toThrow(QueryError);
+  });
+});
+
 describe("agrégations", () => {
   it("compte les étapes de chaque carnet (exemple du ticket)", () => {
     const q = from("journeys", "j")
@@ -401,9 +446,9 @@ function fakeDatabase(answer: (text: string) => QueryResult) {
     },
     async ping() {},
     async close() {},
+    // Une fausse transaction : la fonction reçoit simplement la même fausse base.
     transaction: <T>(fn: (trx: Database) => Promise<T>) => fn(db),
   };
-
   return { db, queries };
 }
 
