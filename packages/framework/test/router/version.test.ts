@@ -1,4 +1,7 @@
+import { IncomingMessage } from "node:http";
+import { Socket } from "node:net";
 import { describe, expect, it } from "vitest";
+import { buildContext, parseTarget } from "../../src/http/context.js";
 import { MethodNotAllowedError, NotFoundError } from "../../src/http/errors.js";
 import { RouteError } from "../../src/router/errors.js";
 import { versionedPath } from "../../src/router/version.js";
@@ -149,5 +152,66 @@ describe("VER-02 · appliquer la version par défaut", () => {
     Route.get("/b", listV1).name("x");
     expect(() => Route.freeze("v1")).toThrow(RouteError);
     expect(getRoutes().map((route) => route.version)).toEqual([undefined, undefined]);
+  });
+});
+
+/** Une requête minimale, comme dans test/http/context.test.ts. */
+function fakeRequest(url: string): IncomingMessage {
+  const req = new IncomingMessage(new Socket());
+  req.url = url;
+  return req;
+}
+
+/** Le chemin que suivra le kernel : découper l'URL, trouver la route, construire le contexte. */
+function contextFor(method: string, url: string) {
+  const { path } = parseTarget(url);
+  const match = resolve(method, path);
+  return buildContext(fakeRequest(url), match.resolved, match.params);
+}
+
+describe("VER-03 · donner la version au contrôleur", () => {
+  it("met la version de la route trouvée dans ctx.version", () => {
+    Route.version("v2", () => {
+      Route.get("/journeys/{id}", listV2).name("journeys.show");
+    });
+    Route.freeze("v1");
+    const ctx = contextFor("GET", "/v2/journeys/3?lang=fr");
+    expect(ctx.version).toBe("v2");
+    expect(ctx.params).toEqual({ id: "3" });
+    expect(ctx.route).toEqual({
+      name: "journeys.show",
+      path: "/v2/journeys/{id}",
+      version: "v2",
+    });
+  });
+
+  it("donne la version par défaut à une route déclarée sans version", () => {
+    Route.get("/users", listV1);
+    Route.freeze("v1");
+    const ctx = contextFor("GET", "/v1/users");
+    expect(ctx.version).toBe("v1");
+    expect(ctx.route?.name).toBeNull();
+  });
+
+  it("permet à un même contrôleur de répondre selon la version", async () => {
+    const list: Controller = ({ version }) => ({
+      status: 200,
+      headers: {},
+      body: version === "v2" ? { items: [], tags: [] } : { items: [] },
+    });
+    Route.get("/journeys", list);
+    Route.version("v2", () => {
+      Route.get("/journeys", list);
+    });
+    Route.freeze("v1");
+    expect((await list(contextFor("GET", "/v1/journeys"))).body).toEqual({ items: [] });
+    expect((await list(contextFor("GET", "/v2/journeys"))).body).toEqual({ items: [], tags: [] });
+  });
+
+  it("partage une vue de la route gelée entre les requêtes", () => {
+    Route.get("/users", listV1);
+    Route.freeze("v1");
+    const first = resolve("GET", "/v1/users").resolved;
+    expect(Object.isFrozen(first)).toBe(true);
   });
 });

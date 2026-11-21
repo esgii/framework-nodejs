@@ -3,7 +3,7 @@ import {
   MethodNotAllowedError,
   NotFoundError,
 } from "../http/errors.js";
-import type { HttpMethod, RouteDefinition } from "../types.js";
+import type { HttpMethod, ResolvedRoute, RouteDefinition } from "../types.js";
 import { compile, matchPattern, type CompiledPattern } from "./compile.js";
 import { versionedPath } from "./version.js";
 
@@ -11,6 +11,11 @@ import { versionedPath } from "./version.js";
 export interface RouteMatch {
   readonly route: RouteDefinition;
   readonly params: Record<string, string>;
+  /**
+   * Ce que le contexte expose de la route (ctx.route), version comprise (VER-03).
+   * Le kernel le passe à buildContext : ctx.version vient de là.
+   */
+  readonly resolved: ResolvedRoute;
 }
 
 /** Trouve la route d'une requête. Construit une fois au démarrage, utilisé à chaque requête. */
@@ -24,9 +29,29 @@ export interface Resolver {
   resolve(method: string, path: string): RouteMatch;
 }
 
-interface DynamicRoute {
+/** Une route préparée au démarrage, avec sa vue pour le contexte. */
+interface Entry {
   readonly route: RouteDefinition;
+  readonly resolved: ResolvedRoute;
+}
+
+interface DynamicRoute extends Entry {
   readonly compiled: CompiledPattern;
+}
+
+/**
+ * La vue de la route donnée au contrôleur : nom, chemin complet et version.
+ * Préparée une fois par route au démarrage, et gelée : elle est partagée par
+ * toutes les requêtes, un contrôleur ne doit pas pouvoir la modifier pour les autres.
+ * Après Route.freeze() (VER-02), toute route a une version ; "" ne sert qu'aux
+ * tests du résolveur qui ne gèlent pas le registre.
+ */
+function toResolved(route: RouteDefinition, path: string): ResolvedRoute {
+  return Object.freeze({
+    name: route.name ?? null,
+    path,
+    version: route.version ?? "",
+  });
 }
 
 /** L'ordre des méthodes dans l'en-tête Allow : toujours le même, quel que soit l'ordre des déclarations. */
@@ -69,19 +94,20 @@ function decodeParams(raw: Record<string, string>): Record<string, string> {
  * '/users/me' l'emporte sur '/users/{id}' parce que la Map est lue en premier.
  */
 export function createResolver(routes: readonly RouteDefinition[]): Resolver {
-  const statics = new Map<string, RouteDefinition>();
+  const statics = new Map<string, Entry>();
   const dynamics: DynamicRoute[] = [];
 
   for (const route of routes) {
     // La version fait partie du chemin comparé : '/journeys' en v2 devient '/v2/journeys'.
     const path = versionedPath(route);
     const compiled = compile(path);
+    const resolved = toResolved(route, path);
     if (compiled.isStatic) {
       const key = staticKey(route.method, trimTrailingSlash(path));
       // Même règle que pour les dynamiques : la première route déclarée gagne.
-      if (!statics.has(key)) statics.set(key, route);
+      if (!statics.has(key)) statics.set(key, { route, resolved });
     } else {
-      dynamics.push({ route, compiled });
+      dynamics.push({ route, resolved, compiled });
     }
   }
 
@@ -104,13 +130,13 @@ export function createResolver(routes: readonly RouteDefinition[]): Resolver {
   return {
     resolve(method, path) {
       const found = statics.get(staticKey(method, trimTrailingSlash(path)));
-      if (found !== undefined) return { route: found, params: {} };
+      if (found !== undefined) return { ...found, params: {} };
 
-      for (const { route, compiled } of dynamics) {
+      for (const { route, resolved, compiled } of dynamics) {
         if (route.method !== method) continue;
         const raw = matchPattern(compiled, path);
         // On s'arrête à la première route qui correspond.
-        if (raw !== null) return { route, params: decodeParams(raw) };
+        if (raw !== null) return { route, resolved, params: decodeParams(raw) };
       }
 
       const allowed = allowedMethods(path);
