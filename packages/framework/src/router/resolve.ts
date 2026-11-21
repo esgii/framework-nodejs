@@ -5,7 +5,7 @@ import {
 } from "../http/errors.js";
 import type { HttpMethod, RouteDefinition } from "../types.js";
 import { compile, matchPattern, type CompiledPattern } from "./compile.js";
-import { versionedPath } from "./group.js";
+import { versionedPath } from "./version.js";
 
 /** Une route trouvée, avec les paramètres lus dans le chemin (déjà décodés). */
 export interface RouteMatch {

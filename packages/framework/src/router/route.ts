@@ -16,7 +16,8 @@ import {
   freezeRegistry,
   resetRegistry,
 } from "./registry.js";
-import { assertVersion, group, joinPaths, version } from "./group.js";
+import { group, joinPaths, version } from "./group.js";
+import { assertVersion } from "./version.js";
 
 /** Objet renvoyé par Route.get/post/... pour chaîner .name() et .middleware(). */
 export interface RouteBuilder {
@@ -95,6 +96,10 @@ export const Route = {
   version,
   /** Remet le registre à zéro. Réservé aux tests (appelé par test/setup.ts). */
   clear: resetRegistry,
-  /** Fige le registre et vérifie l'unicité des noms. Appelé par le kernel au démarrage. */
+  /**
+   * Fige le registre, vérifie l'unicité des noms et donne la version par défaut
+   * aux routes qui n'en ont pas. Appelé par le kernel au démarrage :
+   * Route.freeze(config.api.defaultVersion).
+   */
   freeze: freezeRegistry,
 };

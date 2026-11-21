@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MethodNotAllowedError, NotFoundError } from "../../src/http/errors.js";
 import { RouteError } from "../../src/router/errors.js";
-import { versionedPath } from "../../src/router/group.js";
+import { versionedPath } from "../../src/router/version.js";
 import { getGroupStack, getRoutes } from "../../src/router/registry.js";
 import { createResolver } from "../../src/router/resolve.js";
 import { Route } from "../../src/router/route.js";
@@ -109,5 +109,45 @@ describe("versionedPath", () => {
 
   it("laisse le chemin tel quel sans version", () => {
     expect(versionedPath({ path: "/journeys", version: undefined })).toBe("/journeys");
+  });
+});
+
+describe("VER-02 · appliquer la version par défaut", () => {
+  it("sert une route sans version sous la version par défaut", () => {
+    Route.get("/users", listV1);
+    Route.freeze("v1");
+    expect(getRoutes()[0]?.version).toBe("v1");
+    expect(resolve("GET", "/v1/users").route.controller).toBe(listV1);
+    expect(() => resolve("GET", "/users")).toThrow(NotFoundError);
+  });
+
+  it("prend la version par défaut donnée par la configuration", () => {
+    Route.get("/users", listV1);
+    Route.freeze("v3");
+    expect(resolve("GET", "/v3/users").route.controller).toBe(listV1);
+  });
+
+  it("ne touche pas aux routes qui ont déjà une version", () => {
+    Route.get("/journeys", listV1);
+    Route.version("v2", () => {
+      Route.get("/journeys", listV2);
+    });
+    Route.freeze("v1");
+    expect(resolve("GET", "/v1/journeys").route.controller).toBe(listV1);
+    expect(resolve("GET", "/v2/journeys").route.controller).toBe(listV2);
+  });
+
+  it("refuse une version par défaut invalide, sans rien modifier", () => {
+    Route.get("/users", listV1);
+    expect(() => Route.freeze("1")).toThrow(RouteError);
+    expect(getRoutes()[0]?.version).toBeUndefined();
+    expect(() => Route.get("/other", listV1)).not.toThrow();
+  });
+
+  it("ne modifie aucune route si un nom est en double", () => {
+    Route.get("/a", listV1).name("x");
+    Route.get("/b", listV1).name("x");
+    expect(() => Route.freeze("v1")).toThrow(RouteError);
+    expect(getRoutes().map((route) => route.version)).toEqual([undefined, undefined]);
   });
 });
