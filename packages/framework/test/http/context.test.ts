@@ -29,6 +29,12 @@ describe("buildContext", () => {
         expect(buildContext(req).req).toBe(req);
     });
 
+    it("puts the body read by readBody in ctx.body", () => {
+        const ctx = buildContext(fakeRequest("/journeys"), null, {}, false, { title: "Lisbonne" });
+
+        expect(ctx.body).toEqual({ title: "Lisbonne" });
+    });
+
     it("parses the query string", () => {
         const { query } = buildContext(fakeRequest("/journeys?author=3&tag=rome&tag=food"));
 

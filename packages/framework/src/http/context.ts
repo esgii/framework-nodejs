@@ -28,6 +28,7 @@ export function buildContext(
     route: ResolvedRoute | null = null,
     params: Record<string, string> = {},
     trustProxy = false,
+    body: unknown = undefined,
 ): Context {
 
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -37,7 +38,7 @@ export function buildContext(
         params,
         query: url.searchParams,
         headers: req.headers,
-        body: undefined,
+        body,
         ip: getClientIp(req, trustProxy),
         version: route?.version ?? "",
         user: null,
