@@ -66,3 +66,18 @@ describe("serialize", () => {
         );
     });
 });
+
+describe("reset (QA-01)", () => {
+    it("retire les formats ajoutés et garde ceux d'office", () => {
+        const registry = createSerializerRegistry();
+        registry.register("application/xml", toXml);
+        registry.register("application/json", () => "remplacé");
+
+        registry.reset();
+
+        expect(() => registry.serialize(response({}, "application/xml"))).toThrow("No serializer");
+        expect(registry.serialize(response({ a: 1 }))).toBe('{"a":1}');
+        expect(registry.serialize(response("ok", "text/plain"))).toBe("ok");
+        expect(registry.serialize(response("<p>", "text/html"))).toBe("<p>");
+    });
+});
