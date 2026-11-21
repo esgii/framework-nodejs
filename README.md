@@ -98,6 +98,21 @@ sudo docker compose up -d --build
 
 Après un redémarrage de la machine, Apache, Docker et les conteneurs (`restart: unless-stopped`) repartent seuls.
 
+### Création des tables
+
+Le docker-compose monte `apps/api/migrations/001_init.sql` dans `/docker-entrypoint-initdb.d/` du service `db`. Postgres l'exécute **une seule fois**, au premier démarrage, quand le volume `pgdata` est vide. Sur une première installation, les tables sont donc créées sans rien faire.
+
+Si le volume existe déjà (base créée avant ce montage), le fichier n'est pas rejoué. Deux possibilités :
+
+```bash
+# Base vide ou jetable : recréer les volumes (efface la base ET les fichiers envoyés)
+sudo docker compose down -v
+sudo docker compose up -d --build
+
+# Base à conserver : exécuter le schéma une fois à la main
+sudo docker compose exec -T db psql -U postgres -d carnet -v ON_ERROR_STOP=1 < apps/api/migrations/001_init.sql
+```
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` tourne sur chaque pull request et sur chaque push sur `main`. Les étapes s'arrêtent à la première erreur :
