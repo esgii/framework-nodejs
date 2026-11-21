@@ -8,6 +8,7 @@ import { versionedPath } from "../../src/router/version.js";
 import { getGroupStack, getRoutes } from "../../src/router/registry.js";
 import { createResolver } from "../../src/router/resolve.js";
 import { Route } from "../../src/router/route.js";
+import { url } from "../../src/router/url.js";
 import type { Controller } from "../../src/types.js";
 
 const listV1: Controller = () => ({ status: 200, headers: {}, body: "v1" });
@@ -213,5 +214,60 @@ describe("VER-03 · donner la version au contrôleur", () => {
     Route.freeze("v1");
     const first = resolve("GET", "/v1/users").resolved;
     expect(Object.isFrozen(first)).toBe(true);
+  });
+});
+
+describe("VER-04 · le versionnement de bout en bout", () => {
+  /** L'app type : une liste en v1 (version par défaut) et en v2, un détail seulement en v1. */
+  function declareApp(): void {
+    Route.get("/journeys", listV1).name("journeys.index");
+    Route.get("/journeys/{journeyId}", listV1).name("journeys.show");
+    Route.version("v2", () => {
+      Route.get("/journeys", listV2).name("v2.journeys.index");
+    });
+  }
+
+  it("fait cohabiter v1 et v2 : chacune répond avec son contrôleur et sa version", async () => {
+    declareApp();
+    Route.freeze("v1");
+    const v1 = contextFor("GET", "/v1/journeys");
+    const v2 = contextFor("GET", "/v2/journeys");
+    expect(v1.version).toBe("v1");
+    expect(v2.version).toBe("v2");
+    expect(resolve("GET", "/v1/journeys").route.controller).toBe(listV1);
+    expect(resolve("GET", "/v2/journeys").route.controller).toBe(listV2);
+  });
+
+  it("ne se rabat pas sur la v1 quand une route n'existe pas en v2", () => {
+    declareApp();
+    Route.freeze("v1");
+    expect(resolve("GET", "/v1/journeys/3").params).toEqual({ journeyId: "3" });
+    expect(() => resolve("GET", "/v2/journeys/3")).toThrow(NotFoundError);
+  });
+
+  it("met la version dans l'URL générée, par défaut ou explicite", () => {
+    declareApp();
+    Route.freeze("v1");
+    expect(url("journeys.index")).toBe("/v1/journeys");
+    expect(url("journeys.show", { journeyId: 3 })).toBe("/v1/journeys/3");
+    expect(url("v2.journeys.index")).toBe("/v2/journeys");
+  });
+
+  it("suit la version par défaut de la configuration, sans toucher aux routes déclarées", () => {
+    declareApp();
+    Route.freeze("v3");
+    expect(url("journeys.index")).toBe("/v3/journeys");
+    expect(url("v2.journeys.index")).toBe("/v2/journeys");
+    expect(contextFor("GET", "/v3/journeys/3").version).toBe("v3");
+    expect(() => resolve("GET", "/v1/journeys")).toThrow(NotFoundError);
+  });
+
+  it("donne des URL générées que le résolveur retrouve dans la bonne version", () => {
+    declareApp();
+    Route.freeze("v1");
+    expect(contextFor("GET", url("v2.journeys.index")).version).toBe("v2");
+    expect(contextFor("GET", url("journeys.show", { journeyId: 7 })).params).toEqual({
+      journeyId: "7",
+    });
   });
 });
