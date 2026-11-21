@@ -1,4 +1,8 @@
-import { BadRequestError } from "../http/errors.js";
+import {
+  BadRequestError,
+  MethodNotAllowedError,
+  NotFoundError,
+} from "../http/errors.js";
 import type { HttpMethod, RouteDefinition } from "../types.js";
 import { compile, matchPattern, type CompiledPattern } from "./compile.js";
 
@@ -10,8 +14,13 @@ export interface RouteMatch {
 
 /** Trouve la route d'une requête. Construit une fois au démarrage, utilisé à chaque requête. */
 export interface Resolver {
-  /** La route qui correspond, ou null si aucune ne correspond. */
-  resolve(method: HttpMethod, path: string): RouteMatch | null;
+  /**
+   * La route qui correspond à la méthode et au chemin.
+   * Lève NotFoundError (404) si aucun chemin ne correspond, MethodNotAllowedError (405,
+   * avec l'en-tête Allow) si le chemin existe pour d'autres méthodes.
+   * `method` est une chaîne : le client peut envoyer n'importe quoi (OPTIONS, HEAD, TRUC…).
+   */
+  resolve(method: string, path: string): RouteMatch;
 }
 
 interface DynamicRoute {
@@ -19,12 +28,15 @@ interface DynamicRoute {
   readonly compiled: CompiledPattern;
 }
 
+/** L'ordre des méthodes dans l'en-tête Allow : toujours le même, quel que soit l'ordre des déclarations. */
+const METHODS: readonly HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+
 /** '/users/me/' et '/users/me' désignent la même route ; '/' reste '/'. */
 function trimTrailingSlash(path: string): string {
   return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 }
 
-function staticKey(method: HttpMethod, path: string): string {
+function staticKey(method: string, path: string): string {
   return `${method} ${path}`;
 }
 
@@ -70,6 +82,22 @@ export function createResolver(routes: readonly RouteDefinition[]): Resolver {
     }
   }
 
+  /**
+   * Les méthodes pour lesquelles ce chemin existe. Appelé seulement quand la requête
+   * a échoué : le chemin heureux (route trouvée) ne paie pas ce parcours.
+   */
+  function allowedMethods(path: string): HttpMethod[] {
+    const trimmed = trimTrailingSlash(path);
+    return METHODS.filter(
+      (method) =>
+        statics.has(staticKey(method, trimmed)) ||
+        dynamics.some(
+          ({ route, compiled }) =>
+            route.method === method && matchPattern(compiled, path) !== null,
+        ),
+    );
+  }
+
   return {
     resolve(method, path) {
       const found = statics.get(staticKey(method, trimTrailingSlash(path)));
@@ -81,7 +109,11 @@ export function createResolver(routes: readonly RouteDefinition[]): Resolver {
         // On s'arrête à la première route qui correspond.
         if (raw !== null) return { route, params: decodeParams(raw) };
       }
-      return null;
+
+      const allowed = allowedMethods(path);
+      // Le chemin existe, mais pas avec cette méthode : 405, et Allow dit lesquelles marchent.
+      if (allowed.length > 0) throw new MethodNotAllowedError(allowed);
+      throw new NotFoundError("Route not found");
     },
   };
 }
