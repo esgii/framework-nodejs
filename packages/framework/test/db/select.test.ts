@@ -401,7 +401,9 @@ function fakeDatabase(answer: (text: string) => QueryResult) {
     },
     async ping() {},
     async close() {},
+    transaction: <T>(fn: (trx: Database) => Promise<T>) => fn(db),
   };
+
   return { db, queries };
 }
 
