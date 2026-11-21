@@ -5,6 +5,7 @@ import {
   isNull,
   QueryError,
   render,
+  search,
   type Condition,
   type Join,
   type Operator,
@@ -136,6 +137,15 @@ export class SelectQuery {
   /** column IS NOT NULL. */
   whereNotNull(column: string): SelectQuery {
     return this.#add(isNull(column, true));
+  }
+
+  /**
+   * Recherche plein texte dans les colonnes, reliée aux conditions précédentes par AND.
+   * Trouve les variantes d'un mot (montagne, montagnes) et ignore les petits mots (le, de…).
+   * Un texte vide ne filtre rien.
+   */
+  whereSearch(columns: readonly string[], text: string): SelectQuery {
+    return this.#add(search(columns, text));
   }
 
   /** Des conditions entre parenthèses, reliées aux précédentes par AND. */
