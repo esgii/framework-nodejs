@@ -3,7 +3,7 @@ import { Socket } from "node:net";
 import { describe, expect, it } from "vitest";
 import { toErrorResponse } from "../../src/http/error-handler.js";
 import { buildContext } from "../../src/http/context.js";
-import { NotFoundError } from "../../src/http/errors.js";
+import { NotFoundError } from "../../src/index.js";
 import { securityHeaders } from "../../src/middleware/security-headers.js";
 import type { HttpResponse } from "../../src/types.js";
 

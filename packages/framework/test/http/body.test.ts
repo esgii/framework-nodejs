@@ -2,7 +2,7 @@ import { IncomingMessage, type IncomingHttpHeaders } from "node:http";
 import { Socket } from "node:net";
 import { describe, expect, it } from "vitest";
 import { readBody } from "../../src/http/body.js";
-import { BadRequestError, PayloadTooLargeError } from "../../src/http/errors.js";
+import { BadRequestError, PayloadTooLargeError } from "../../src/index.js";
 
 const JSON_TYPE = { "content-type": "application/json" };
 

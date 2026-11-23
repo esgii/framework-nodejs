@@ -2,8 +2,8 @@ import { IncomingMessage, type IncomingHttpHeaders } from "node:http";
 import { Socket } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildContext } from "../../src/http/context.js";
-import { NotFoundError } from "../../src/http/errors.js";
-import { logger } from "../../src/middleware/logger.js";
+import { NotFoundError } from "../../src/index.js";
+import { logger } from "../../src/index.js";
 import type { Context, HttpResponse, ResolvedRoute } from "../../src/types.js";
 
 /** Une fausse requête : l'URL et les en-têtes qu'on veut, sans serveur. */
@@ -75,7 +75,7 @@ describe("logger", () => {
 
         await logger()(ctx, async () => ok(404));
 
-        expect(log).toHaveBeenCalledWith(expect.stringMatching(/^\d+ms  - - 404 -$/));
+        expect(log).toHaveBeenCalledWith(expect.stringMatching(/^\d+ms {2}- - 404 -$/));
     });
 
     it("écrit - pour une route sans nom", async () => {
