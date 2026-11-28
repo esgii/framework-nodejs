@@ -56,6 +56,10 @@ export { Route } from "./router/route.js";
 export type { RouteBuilder } from "./router/route.js";
 export type { GroupOptions } from "./router/group.js";
 export { RouteError } from "./router/errors.js";
+// Générer l'URL d'une route nommée, version comprise : url("journeys.show", { journeyId: 3 }).
+export { url } from "./router/url.js";
+export type { UrlParams } from "./router/url.js";
+export { logger } from "./middleware/logger.js";
 
 // La connexion (createDatabase) reste interne : elle accepte du SQL brut,
 // l'app ne doit jamais pouvoir s'en servir directement.
@@ -87,3 +91,12 @@ export {
 export type { Row } from "./db/write.ts";
 export { RowDecodeError } from "./db/decode.ts";
 export type { Decoder } from "./db/decode.ts";
+export {
+  hashPassword,
+  MAX_PASSWORD_BYTES,
+  PasswordError,
+  verifyPassword,
+} from "./security/password.ts";
+export { authenticate } from "./middleware/auth.ts";
+export type { AuthOptions } from "./middleware/auth.ts";
+export { requireRole } from "./middleware/role.ts";

@@ -43,11 +43,25 @@ export function createSerializerRegistry() {
         return fn(body);
     }
 
-    register("application/json", (body) => JSON.stringify(body));
-    register("text/plain", (body) => String(body));
-    register("text/html", (body) => String(body));
+    /** Les formats inscrits d'office. */
+    function registerDefaults(): void {
+        register("application/json", (body) => JSON.stringify(body));
+        register("text/plain", (body) => String(body));
+        register("text/html", (body) => String(body));
+    }
 
-    return { register, serialize };
+    /**
+     * Retire les formats ajoutés et remet ceux d'office. Le registre est partagé par
+     * tout le processus : test/setup.ts l'appelle avant chaque test (QA-01), comme Route.clear().
+     */
+    function reset(): void {
+        serializers.clear();
+        registerDefaults();
+    }
+
+    registerDefaults();
+
+    return { register, serialize, reset };
 }
 
 /** Le registre utilisé par le framework. */

@@ -1,6 +1,7 @@
 import type { Middleware } from "../types.js";
 import { RouteError } from "./errors.js";
-import { getGroupStack } from "./registry.js";
+import { getGroupStack, type GroupContext } from "./registry.js";
+import { assertVersion } from "./version.js";
 
 /** Options de Route.group : toutes facultatives. */
 export interface GroupOptions {
@@ -36,13 +37,38 @@ export function joinPaths(...parts: readonly string[]): string {
  *   });
  */
 export function group(options: GroupOptions, callback: () => unknown): void {
+  withGroup(
+    {
+      prefix: options.prefix ?? "",
+      namePrefix: options.name ?? "",
+      middlewares: [...(options.middleware ?? [])],
+      version: undefined,
+    },
+    callback,
+  );
+}
+
+/**
+ * Déclare des routes dans une version. Marche comme un groupe sans préfixe :
+ * la version est ajoutée devant le chemin quand on cherche la route (VER-01).
+ *
+ *   Route.get('/journeys', listV1);           // GET /v1/journeys (version par défaut)
+ *   Route.version('v2', () => {
+ *     Route.get('/journeys', listV2);         // GET /v2/journeys
+ *   });
+ */
+export function version(name: string, callback: () => unknown): void {
+  assertVersion(name);
+  withGroup(
+    { prefix: "", namePrefix: "", middlewares: [], version: name },
+    callback,
+  );
+}
+
+/** Empile le contexte du groupe le temps du callback, puis le dépile toujours. */
+function withGroup(context: GroupContext, callback: () => unknown): void {
   const stack = getGroupStack();
-  stack.push({
-    prefix: options.prefix ?? "",
-    namePrefix: options.name ?? "",
-    middlewares: [...(options.middleware ?? [])],
-    version: undefined,
-  });
+  stack.push(context);
   try {
     const result = callback();
     // Un callback async rendrait la main à son premier await : les routes
