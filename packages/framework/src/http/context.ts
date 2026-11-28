@@ -50,13 +50,14 @@ export function buildContext(
     route: ResolvedRoute | null = null,
     params: Record<string, string> = {},
     trustProxy = false,
+    body: unknown = undefined,
 ): Context {
     return {
         req,
         params,
         query: parseTarget(req.url).query,
         headers: req.headers,
-        body: undefined,
+        body,
         ip: getClientIp(req, trustProxy),
         version: route?.version ?? "",
         user: null,
