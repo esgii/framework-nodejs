@@ -9,7 +9,7 @@ export default defineConfig({
     sequence: { shuffle: true },
     coverage: {
       provider: "v8",
-      include: ["packages/framework/src/**/*.ts"],
+      include: ["packages/framework/src/**/*.ts", "apps/api/test/**/*.test.ts"],
       exclude: ["apps/**", "**/*.d.ts"],
       reporter: ["text", "html"],
       reportsDirectory: "coverage",
