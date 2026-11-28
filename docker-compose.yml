@@ -6,6 +6,7 @@ services:
       POSTGRES_DB: carnet
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./apps/api/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d carnet"]
       interval: 5s
