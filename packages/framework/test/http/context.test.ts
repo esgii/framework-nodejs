@@ -29,12 +29,25 @@ describe("buildContext", () => {
         expect(buildContext(req).req).toBe(req);
     });
 
+    it("puts the body read by readBody in ctx.body", () => {
+        const ctx = buildContext(fakeRequest("/journeys"), null, {}, false, { title: "Lisbonne" });
+
+        expect(ctx.body).toEqual({ title: "Lisbonne" });
+    });
+
     it("parses the query string", () => {
         const { query } = buildContext(fakeRequest("/journeys?author=3&tag=rome&tag=food"));
 
         expect(query.get("author")).toBe("3");
         expect(query.getAll("tag")).toEqual(["rome", "food"]);
         expect(query.get("missing")).toBeNull();
+    });
+
+    it("gives the request headers", () => {
+        const { headers } = buildContext(fakeRequest("/journeys", { authorization: "Bearer abc" }));
+
+        expect(headers["authorization"]).toBe("Bearer abc");
+        expect(headers["accept"]).toBeUndefined();
     });
 
     it("falls back to / when the request has no url", () => {

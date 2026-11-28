@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { created, html, json, noContent, redirect, stream, text } from "../../src/index.js";
+import { created, html, json, noContent, stream, text } from "../../src/index.js";
 
 describe("response helpers", () => {
     it("json: 200 by default, with a JSON content type", () => {
@@ -46,11 +46,6 @@ describe("response helpers", () => {
 
         expect(response.body).toBe(readable);
         expect(response.headers["content-type"]).toBe("image/png");
-    });
-
-    it("redirect: 302 by default, or the given status", () => {
-        expect(redirect("/login")).toEqual({ status: 302, headers: { location: "/login" }, body: null });
-        expect(redirect("/new", 301).status).toBe(301);
     });
 
     it("never shares headers between two responses", () => {

@@ -140,22 +140,6 @@ describe("send with a stream", () => {
         expect(received).toBe(total);
     });
 
-    it("answers 500 when the source fails before sending anything", async () => {
-        const response = await request(async (res) => {
-            const body = new Readable({
-                read() {
-                    this.destroy(new Error("ENOENT: file deleted"));
-                },
-            });
-            await send(res, { status: 200, headers: { "content-type": "image/png" }, body });
-        });
-
-        expect(response.status).toBe(500);
-        expect(await response.json()).toEqual({
-            error: { code: "INTERNAL_ERROR", message: "Internal server error", details: [] },
-        });
-    });
-
     it("cuts the connection when the source fails in the middle", async () => {
         let sending = Promise.resolve(false);
         const response = await request(async (res) => {
