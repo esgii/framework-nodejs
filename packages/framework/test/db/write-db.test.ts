@@ -13,6 +13,8 @@ let db: Database;
 
 beforeAll(async () => {
     db = createDatabase(TEST_URL, () => {});
+    // Une table laissée par un lancement interrompu ne doit pas faire échouer celui-ci (QA-01).
+    await db.query(`DROP TABLE IF EXISTS ${quoteIdent(TABLE)}`);
     await db.query(
         `CREATE TABLE ${quoteIdent(TABLE)} (id serial PRIMARY KEY, email text NOT NULL, name text)`,
     );

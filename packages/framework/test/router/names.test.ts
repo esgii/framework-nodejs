@@ -10,7 +10,7 @@ describe("RTE-07 · routes nommées", () => {
   it("retrouve chaque route par son nom après le gel", () => {
     const index = Route.get("/journeys", ctrl).name("journeys.index");
     const show = Route.get("/journeys/{id}", ctrl).name("journeys.show");
-    Route.freeze();
+    Route.freeze("v1");
 
     expect(getRouteByName("journeys.index")).toBe(index.definition);
     expect(getRouteByName("journeys.show")).toBe(show.definition);
@@ -21,8 +21,8 @@ describe("RTE-07 · routes nommées", () => {
     Route.get("/a", ctrl).name("x");
     Route.post("/b", ctrl).name("x");
 
-    expect(() => Route.freeze()).toThrow(RouteError);
-    expect(() => Route.freeze()).toThrow(
+    expect(() => Route.freeze("v1")).toThrow(RouteError);
+    expect(() => Route.freeze("v1")).toThrow(
       "Nom de route en double : x (GET /a et POST /b)",
     );
   });
@@ -31,11 +31,11 @@ describe("RTE-07 · routes nommées", () => {
     const first = Route.get("/a", ctrl).name("x");
     Route.post("/b", ctrl).name("x");
 
-    expect(() => Route.freeze()).toThrow(RouteError);
+    expect(() => Route.freeze("v1")).toThrow(RouteError);
     expect(getRouteByName("x")).toBe(undefined);
     expect(isFrozen()).toBe(false);
     // un second appel redonne la même erreur, pas un faux doublon
-    expect(() => Route.freeze()).toThrow("Nom de route en double : x");
+    expect(() => Route.freeze("v1")).toThrow("Nom de route en double : x");
     expect(first.definition.path).toBe("/a");
   });
 
@@ -45,7 +45,7 @@ describe("RTE-07 · routes nommées", () => {
     });
     Route.get("/other/{id}", ctrl).name("journeys.show");
 
-    expect(() => Route.freeze()).toThrow(
+    expect(() => Route.freeze("v1")).toThrow(
       "Nom de route en double : journeys.show",
     );
   });
@@ -58,7 +58,7 @@ describe("RTE-07 · routes nommées", () => {
       Route.get("/users", ctrl).name("index");
     });
 
-    Route.freeze();
+    Route.freeze("v1");
     expect(getRouteByName("journeys.index")?.path).toBe("/journeys");
     expect(getRouteByName("users.index")?.path).toBe("/users");
   });
@@ -66,33 +66,33 @@ describe("RTE-07 · routes nommées", () => {
   it("ignore les routes sans nom", () => {
     Route.get("/a", ctrl);
     Route.get("/b", ctrl);
-    Route.freeze();
+    Route.freeze("v1");
     expect(isFrozen()).toBe(true);
   });
 
   it("renommer une route avant le gel ne crée pas de doublon", () => {
     Route.get("/a", ctrl).name("old").name("new");
-    Route.freeze();
+    Route.freeze("v1");
     expect(getRouteByName("new")?.path).toBe("/a");
     expect(getRouteByName("old")).toBe(undefined);
   });
 
   it("freeze() est idempotent", () => {
     Route.get("/a", ctrl).name("a");
-    Route.freeze();
-    Route.freeze();
+    Route.freeze("v1");
+    Route.freeze("v1");
     expect(getRouteByName("a")?.path).toBe("/a");
   });
 
   describe("après le gel", () => {
     it("refuse une nouvelle route", () => {
-      Route.freeze();
+      Route.freeze("v1");
       expect(() => Route.get("/late", ctrl)).toThrow(RouteError);
     });
 
     it("refuse .name() et .middleware() sur une route existante", () => {
       const builder = Route.get("/a", ctrl).name("a");
-      Route.freeze();
+      Route.freeze("v1");
       expect(() => builder.name("b")).toThrow("figé");
       expect(() => builder.middleware((_ctx, next) => next())).toThrow("figé");
       expect(getRouteByName("a")?.name).toBe("a");
@@ -101,13 +101,13 @@ describe("RTE-07 · routes nommées", () => {
 
   it("Route.clear() vide les noms et dé-fige le registre", () => {
     Route.get("/a", ctrl).name("a");
-    Route.freeze();
+    Route.freeze("v1");
     Route.clear();
 
     expect(isFrozen()).toBe(false);
     expect(getRouteByName("a")).toBe(undefined);
     Route.get("/a", ctrl).name("a");
-    Route.freeze();
+    Route.freeze("v1");
     expect(getRouteByName("a")?.path).toBe("/a");
   });
 });

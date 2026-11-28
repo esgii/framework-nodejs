@@ -15,6 +15,8 @@ let db: Database;
 
 beforeAll(async () => {
   db = createDatabase(TEST_URL, () => {});
+  // Une table laissée par un lancement interrompu ne doit pas faire échouer celui-ci (QA-01).
+  await db.query(`DROP TABLE IF EXISTS ${quoteIdent(TABLE)}`);
   // 25 lignes, numérotées de 1 à 25 ; rest = id % 5 forme 5 groupes de 5 lignes.
   await db.query(
     `CREATE TABLE ${quoteIdent(TABLE)} AS SELECT n AS id, n % 5 AS rest FROM generate_series(1, 25) AS n`,

@@ -1,7 +1,7 @@
 import { createServer, IncomingMessage, type IncomingHttpHeaders } from "node:http";
 import { Socket } from "node:net";
 import { describe, expect, it } from "vitest";
-import { buildContext } from "../../src/http/context.js";
+import { buildContext, parseTarget } from "../../src/http/context.js";
 import type { Controller } from "../../src/types.js";
 
 function fakeRequest(url: string, headers: IncomingHttpHeaders = {}): IncomingMessage {
@@ -75,6 +75,48 @@ describe("buildContext", () => {
         const ctx = buildContext(fakeRequest("/journeys/42?lang=fr"), null, { id: "42" });
 
         expect((await show(ctx)).body).toEqual({ id: "42", lang: "fr" });
+    });
+});
+
+describe("RTE-09 · query parameters", () => {
+    it("offers get, getAll and has, like a key/value collection", () => {
+        const { query } = buildContext(fakeRequest("/users?email=a%40b.fr&name=L%C3%A9na+P&tag=x&tag=y"));
+
+        expect(query.get("email")).toBe("a@b.fr");
+        expect(query.get("name")).toBe("Léna P");
+        expect(query.getAll("tag")).toEqual(["x", "y"]);
+        expect(query.has("tag")).toBe(true);
+        expect(query.has("missing")).toBe(false);
+    });
+
+    it("keeps an empty value, which is not the same as a missing one", () => {
+        const { query } = buildContext(fakeRequest("/users?email="));
+
+        expect(query.get("email")).toBe("");
+        expect(query.has("email")).toBe(true);
+    });
+});
+
+describe("parseTarget", () => {
+    it("splits the path from the query string", () => {
+        const { path, query } = parseTarget("/journeys/3?lang=fr");
+
+        expect(path).toBe("/journeys/3");
+        expect(query.get("lang")).toBe("fr");
+    });
+
+    it("leaves the path encoded: the router decodes each parameter", () => {
+        expect(parseTarget("/tags/%C3%A9t%C3%A9").path).toBe("/tags/%C3%A9t%C3%A9");
+    });
+
+    it("does not read //host/path as another domain", () => {
+        expect(parseTarget("//evil.com/admin?x=1").path).toBe("//evil.com/admin");
+    });
+
+    it("falls back to / for a missing url or one that does not start with /", () => {
+        expect(parseTarget(undefined).path).toBe("/");
+        expect(parseTarget("*").path).toBe("/");
+        expect(parseTarget("http://other/a").path).toBe("/");
     });
 });
 
