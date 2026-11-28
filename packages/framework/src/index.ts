@@ -56,6 +56,7 @@ export { Route } from "./router/route.js";
 export type { RouteBuilder } from "./router/route.js";
 export type { GroupOptions } from "./router/group.js";
 export { RouteError } from "./router/errors.js";
+export { logger } from "./middleware/logger.js";
 
 // La connexion (createDatabase) reste interne : elle accepte du SQL brut,
 // l'app ne doit jamais pouvoir s'en servir directement.
